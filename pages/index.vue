@@ -44,9 +44,23 @@
             v-model:show="showLoginModal"
             v-model:loginForm="loginForm"
             @login="login"
+            @switchToRegister="showRegisterModal = true"
+            @switchToForgotPassword="showForgotPasswordModal = true"
+        />
+
+        <RegisterModal
+            v-model:show="showRegisterModal"
+            :registerForm="registerForm"
+            @register="handleRegister"
+            @switchToLogin="showLoginModal = true"
         />
 
         <BookDetailModal v-model:show="showBookModal" :book="selectedBook" />
+        <ForgotPasswordModal
+            v-model:show="showForgotPasswordModal"
+            @switchToLogin="showLoginModal = true"
+            @resetPasswordRequest="handleResetPasswordRequest"
+        />
     </div>
 </template>
 
@@ -62,16 +76,30 @@ import NewsletterSection from '~/components/home/NewsletterSection.vue';
 import Footer from '~/components/layouts/Footer.vue';
 import LoginModal from '~/components/modals/LoginModal.vue';
 import BookDetailModal from '../components/modals/BookDetailModal.vue';
+import RegisterModal from '~/components/modals/RegisterModal.vue';
+import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 
 // État et données
 const searchQuery = ref('');
 const showLoginModal = ref(false);
+const showRegisterModal = ref(false);
+const showForgotPasswordModal = ref(false);
 const showBookModal = ref(false);
 const selectedBook = ref(null);
 const newsletterEmail = ref('');
 const loginForm = ref({
     email: '',
     password: ''
+});
+
+const registerForm = ref({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    address: '',
+    phone: '',
+    acceptTerms: false
 });
 
 // Données de livres
@@ -260,6 +288,23 @@ const slideRight = (categoryIndex) => {
 // Handlers
 const login = () => {
     showLoginModal.value = false;
+};
+
+const handleResetPasswordRequest = (email) => {
+    console.log('Demande de réinitialisation du mot de passe pour:', email);
+    // Logique d'envoi d'email de réinitialisation...
+
+    // Optionnel: afficher une notification de succès
+    ElNotification({
+        title: 'Email envoyé',
+        message:
+            'Un lien de réinitialisation a été envoyé à votre adresse email.',
+        type: 'success'
+    });
+};
+
+const handleRegister = () => {
+    showRegisterModal.value = false;
 };
 
 const showBookDetails = (book) => {

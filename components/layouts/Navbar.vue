@@ -10,7 +10,6 @@
                 <el-menu-item index="1">Accueil</el-menu-item>
                 <el-menu-item index="2">Catalogue</el-menu-item>
                 <el-menu-item index="3">Salles</el-menu-item>
-                <el-menu-item index="4">Événements</el-menu-item>
             </el-menu>
         </div>
         <div class="search-container">
