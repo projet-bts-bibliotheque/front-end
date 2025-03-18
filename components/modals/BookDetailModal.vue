@@ -17,7 +17,7 @@
                     <h2>{{ book.title }}</h2>
                     <p class="book-author">Par {{ book.author }}</p>
                     <div class="book-rating">
-                        <el-rate v-model="book.rating" disabled />
+                        <el-rate v-model="localRating" disabled />
                         <span class="rating-text">{{ book.rating }} sur 5</span>
                     </div>
                     <div class="book-status">
@@ -74,7 +74,8 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch } from 'vue';
+const props = defineProps({
     show: {
         type: Boolean,
         required: true
@@ -86,6 +87,17 @@ defineProps({
 });
 
 defineEmits(['update:show']);
+
+const localRating = ref(props.book ? props.book.rating : 0);
+
+watch(
+    () => props.book,
+    (newBook) => {
+        if (newBook) {
+            localRating.value = newBook.rating;
+        }
+    }
+);
 </script>
 
 <style scoped>

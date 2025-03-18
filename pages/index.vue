@@ -26,10 +26,14 @@
                     :books="category.books"
                     :categoryIndex="index"
                     :sliderPosition="sliderPositions[index]"
+                    :itemWidth="itemWidth"
+                    :gapWidth="gapWidth"
+                    :visibleItems="visibleItems"
                     @slideLeft="slideLeft(index)"
                     @slideRight="slideRight(index)"
                     @showBookDetails="showBookDetails"
                     @reserveBook="reserveBook"
+                    @maxPositionChange="updateMaxPosition"
                 />
             </section>
 
@@ -65,8 +69,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+defineOptions({
+    name: 'LibraryIndex'
+});
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { ArrowRight } from '@element-plus/icons-vue';
+import { ElNotification } from 'element-plus';
 import Navbar from '~/components/layouts/Navbar.vue';
 import HeroSection from '~/components/home/HeroSection.vue';
 import FeaturesSection from '~/components/home/FeaturesSection.vue';
@@ -75,11 +83,11 @@ import StatsSection from '~/components/home/StatsSection.vue';
 import NewsletterSection from '~/components/home/NewsletterSection.vue';
 import Footer from '~/components/layouts/Footer.vue';
 import LoginModal from '~/components/modals/LoginModal.vue';
-import BookDetailModal from '../components/modals/BookDetailModal.vue';
+import BookDetailModal from '~/components/modals/BookDetailModal.vue';
 import RegisterModal from '~/components/modals/RegisterModal.vue';
 import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 
-// État et données
+// États UI pour les modales et les formulaires
 const searchQuery = ref('');
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
@@ -192,7 +200,7 @@ const sampleBooks = [
     }
 ];
 
-// Catégories
+// Configuration des catégories de livres
 const categories = ref([
     {
         title: 'Dernières acquisitions',
@@ -215,19 +223,38 @@ const categories = ref([
     }
 ]);
 
-// Configuration du slider
+// Configuration et état du slider
 const sliderPositions = ref([]);
+const maxPositions = ref([]);
 const itemWidth = ref(200);
 const gapWidth = ref(16);
 const visibleItems = ref(4);
 
+/**
+ * Initialise les positions des sliders et configure les dimensions responsives
+ * @returns {void}
+ */
 onMounted(() => {
     sliderPositions.value = categories.value.map(() => 0);
+    maxPositions.value = categories.value.map(() => 0);
     updateItemWidth();
     window.addEventListener('resize', updateItemWidth);
 });
 
-// Fonction de recherche
+/**
+ * Nettoie les écouteurs d'événements avant le démontage du composant
+ * @returns {void}
+ */
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', updateItemWidth);
+});
+
+/**
+ * Effectue une recherche de livres en fonction d'une chaîne de requête
+ * @param {string} queryString - La chaîne de caractères à rechercher
+ * @param {Function} cb - Fonction de callback qui recevra les résultats
+ * @returns {void}
+ */
 const querySearch = (queryString, cb) => {
     const results = queryString
         ? sampleBooks.filter((book) => {
@@ -242,7 +269,10 @@ const querySearch = (queryString, cb) => {
     cb(results.map((book) => ({ value: book.title, book })));
 };
 
-// Fonctions de slider
+/**
+ * Met à jour la largeur des éléments et le nombre d'éléments visibles
+ * @returns {void}
+ */
 const updateItemWidth = () => {
     const width = window.innerWidth;
     if (width < 768) {
@@ -257,17 +287,30 @@ const updateItemWidth = () => {
     }
 };
 
+/**
+ * Met à jour la position maximale pour un slider de catégorie spécifique
+ * @param {Object} params - Paramètres de mise à jour
+ * @param {Number} params.categoryIndex - Index de la catégorie à mettre à jour
+ * @param {Number} params.maxPosition - Position maximale calculée pour ce slider
+ * @returns {void}
+ */
+const updateMaxPosition = ({ categoryIndex, maxPosition }) => {
+    maxPositions.value[categoryIndex] = maxPosition;
+};
+
+/**
+ * Calcule la distance de déplacement pour chaque clic sur les boutons du slider
+ * @returns {Number} La taille totale d'un élément (largeur + écart)
+ */
 const slideStep = () => {
     return itemWidth.value + gapWidth.value;
 };
 
-const maxSlidePosition = (booksCount) => {
-    const totalWidth = booksCount * (itemWidth.value + gapWidth.value);
-    const visibleWidth =
-        visibleItems.value * (itemWidth.value + gapWidth.value);
-    return Math.max(0, totalWidth - visibleWidth);
-};
-
+/**
+ * Déplace le slider vers la gauche pour une catégorie spécifique
+ * @param {Number} categoryIndex - Index de la catégorie à faire défiler
+ * @returns {void}
+ */
 const slideLeft = (categoryIndex) => {
     const newPosition = Math.max(
         0,
@@ -276,25 +319,36 @@ const slideLeft = (categoryIndex) => {
     sliderPositions.value[categoryIndex] = newPosition;
 };
 
+/**
+ * Déplace le slider vers la droite pour une catégorie spécifique
+ * @param {Number} categoryIndex - Index de la catégorie à faire défiler
+ * @returns {void}
+ */
 const slideRight = (categoryIndex) => {
-    const categoryBooks = categories.value[categoryIndex].books.length;
     const newPosition = Math.min(
-        maxSlidePosition(categoryBooks),
+        maxPositions.value[categoryIndex],
         sliderPositions.value[categoryIndex] + slideStep()
     );
     sliderPositions.value[categoryIndex] = newPosition;
 };
 
-// Handlers
+/**
+ * Gère l'action de connexion utilisateur et ferme la modal de connexion
+ * @returns {void}
+ */
 const login = () => {
     showLoginModal.value = false;
 };
 
+/**
+ * Traite une demande de réinitialisation de mot de passe
+ * @param {string} email - Adresse email pour laquelle réinitialiser le mot de passe
+ * @returns {void}
+ */
 const handleResetPasswordRequest = (email) => {
     console.log('Demande de réinitialisation du mot de passe pour:', email);
     // Logique d'envoi d'email de réinitialisation...
 
-    // Optionnel: afficher une notification de succès
     ElNotification({
         title: 'Email envoyé',
         message:
@@ -303,19 +357,37 @@ const handleResetPasswordRequest = (email) => {
     });
 };
 
+/**
+ * Gère l'enregistrement d'un nouvel utilisateur et ferme la modal d'inscription
+ * @returns {void}
+ */
 const handleRegister = () => {
     showRegisterModal.value = false;
 };
 
+/**
+ * Affiche les détails d'un livre dans une modal
+ * @param {Object} book - Le livre dont les détails doivent être affichés
+ * @returns {void}
+ */
 const showBookDetails = (book) => {
     selectedBook.value = book;
     showBookModal.value = true;
 };
 
+/**
+ * Gère la réservation d'un livre si celui-ci est disponible
+ * @param {Object} book - Le livre à réserver
+ * @returns {void}
+ */
 const reserveBook = (book) => {
     if (book.available) {
         // Logique de réservation
-        alert(`Livre "${book.title}" réservé avec succès!`);
+        ElNotification({
+            title: 'Réservation confirmée',
+            message: `Livre "${book.title}" réservé avec succès!`,
+            type: 'success'
+        });
     }
 };
 </script>

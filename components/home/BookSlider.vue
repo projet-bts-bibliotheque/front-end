@@ -36,10 +36,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
 import BookCard from './BookCard.vue';
 
+// Définition des props pour le composant
 const props = defineProps({
     books: {
         type: Array,
@@ -53,8 +54,6 @@ const props = defineProps({
         type: Number,
         required: true
     },
-    // Ces props seraient normalement calculés dans le parent
-    // mais on les inclut ici pour le composant autonome
     itemWidth: {
         type: Number,
         default: 200
@@ -69,13 +68,20 @@ const props = defineProps({
     }
 });
 
+// Définition des événements émis par le composant
 const emit = defineEmits([
     'slideLeft',
     'slideRight',
     'showBookDetails',
-    'reserveBook'
+    'reserveBook',
+    'maxPositionChange'
 ]);
 
+/**
+ * Calcule la position maximale du slider en fonction du nombre de livres
+ * et des dimensions des éléments
+ * @returns {Number} La position maximale en pixels
+ */
 const maxSlidePosition = computed(() => {
     const totalWidth = props.books.length * (props.itemWidth + props.gapWidth);
     const visibleWidth =
@@ -83,9 +89,81 @@ const maxSlidePosition = computed(() => {
     return Math.max(0, totalWidth - visibleWidth);
 });
 
+/**
+ * Détermine si le slider est à sa position maximale
+ * @returns {Boolean} Vrai si le slider ne peut plus avancer
+ */
 const isMaxPosition = computed(() => {
     return props.sliderPosition >= maxSlidePosition.value;
 });
+
+/**
+ * Émet la position maximale initiale lors du montage du composant
+ * @returns {void}
+ */
+onMounted(() => {
+    emit('maxPositionChange', {
+        categoryIndex: props.categoryIndex,
+        maxPosition: maxSlidePosition.value
+    });
+});
+
+/**
+ * Observe les changements de la position maximale calculée
+ * et émet un événement lorsqu'elle change
+ * @returns {void}
+ */
+watch(maxSlidePosition, (newValue) => {
+    emit('maxPositionChange', {
+        categoryIndex: props.categoryIndex,
+        maxPosition: newValue
+    });
+});
+
+/**
+ * Observe les changements du nombre de livres et met à jour
+ * la position maximale en conséquence
+ * @returns {void}
+ */
+watch(
+    () => props.books.length,
+    () => {
+        emit('maxPositionChange', {
+            categoryIndex: props.categoryIndex,
+            maxPosition: maxSlidePosition.value
+        });
+    }
+);
+
+/**
+ * Observe les changements de la largeur des éléments et met à jour
+ * la position maximale en conséquence
+ * @returns {void}
+ */
+watch(
+    () => props.itemWidth,
+    () => {
+        emit('maxPositionChange', {
+            categoryIndex: props.categoryIndex,
+            maxPosition: maxSlidePosition.value
+        });
+    }
+);
+
+/**
+ * Observe les changements du nombre d'éléments visibles et met à jour
+ * la position maximale en conséquence
+ * @returns {void}
+ */
+watch(
+    () => props.visibleItems,
+    () => {
+        emit('maxPositionChange', {
+            categoryIndex: props.categoryIndex,
+            maxPosition: maxSlidePosition.value
+        });
+    }
+);
 </script>
 
 <style scoped>

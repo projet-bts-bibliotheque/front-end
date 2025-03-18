@@ -29,7 +29,7 @@
                 class="register-form"
                 :model="formData"
                 :rules="rules"
-                ref="registerForm"
+                ref="formRef"
                 label-position="top"
             >
                 <div class="form-row">
@@ -137,14 +137,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
-import {
-    Close,
-    User,
-    Message,
-    Lock,
-    Location,
-    Phone
-} from '@element-plus/icons-vue';
+import { Close } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
 
 const props = defineProps({
@@ -174,7 +167,7 @@ const emit = defineEmits([
     'switchToLogin'
 ]);
 
-const registerForm = ref(null);
+const formRef = ref(null);
 const isLoading = ref(false);
 
 const formData = reactive({
@@ -282,7 +275,7 @@ const rules = {
 };
 
 const handleRegister = () => {
-    registerForm.value.validate((valid) => {
+    formRef.value.validate((valid) => {
         if (valid) {
             // Vérifier une dernière fois si les mots de passe correspondent
             if (formData.password !== formData.confirmPassword) {

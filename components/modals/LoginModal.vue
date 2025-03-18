@@ -86,7 +86,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { Close, Message, Lock } from '@element-plus/icons-vue';
+import { Close } from '@element-plus/icons-vue';
 
 const props = defineProps({
     show: {

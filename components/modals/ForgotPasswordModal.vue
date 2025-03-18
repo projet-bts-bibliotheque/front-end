@@ -70,9 +70,9 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
-import { Close, Message } from '@element-plus/icons-vue';
+import { Close } from '@element-plus/icons-vue';
 
-const props = defineProps({
+defineProps({
     show: {
         type: Boolean,
         required: true

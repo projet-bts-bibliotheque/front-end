@@ -59,10 +59,12 @@ defineEmits(['showDetails', 'reserve']);
     cursor: pointer;
 }
 
-.book-card:hover {
-    transform: translateY(-8px) scale(1.03);
-    z-index: 1;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+@media (hover: hover) {
+    .book-card:hover {
+        transform: translateY(-8px) scale(1.03);
+        z-index: 1;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
 }
 
 .book-availability {

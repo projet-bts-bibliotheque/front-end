@@ -22,10 +22,6 @@
     </section>
 </template>
 
-<script setup>
-// Pas de logique particulière nécessaire
-</script>
-
 <style scoped>
 .stats-section {
     margin: 60px 0;
@@ -68,7 +64,17 @@
 
 @media (max-width: 768px) {
     .stats-container {
+        display: grid;
         grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .stat-item {
+        padding: 15px 10px;
+    }
+
+    .stat-number {
+        font-size: 2rem;
     }
 }
 </style>
