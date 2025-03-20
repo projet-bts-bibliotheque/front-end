@@ -7,8 +7,16 @@
                 class="el-menu"
                 mode="horizontal"
             >
-                <el-menu-item index="1">Accueil</el-menu-item>
-                <el-menu-item index="2">Catalogue</el-menu-item>
+                <el-menu-item index="1"
+                    ><NuxtLink class="menu-links" to="/"
+                        >Accueil</NuxtLink
+                    ></el-menu-item
+                >
+                <el-menu-item index="2">
+                    <NuxtLink class="menu-links" to="/catalog"
+                        >Catalogue</NuxtLink
+                    ></el-menu-item
+                >
                 <el-menu-item index="3">Salles</el-menu-item>
             </el-menu>
         </div>
@@ -79,6 +87,10 @@ const activeIndex = ref('1');
     width: 50%;
     display: flex;
     flex-direction: column;
+}
+.menu-links {
+    color: black;
+    text-decoration: none;
 }
 
 .menu .el-menu {

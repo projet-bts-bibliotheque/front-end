@@ -8,7 +8,9 @@
             </p>
             <div class="cta-buttons">
                 <el-button type="primary" size="large"
-                    >Explorer le catalogue</el-button
+                    ><nuxt-link class="cta-buttons-links" to="/catalog"
+                        >Explorer le catalogue</nuxt-link
+                    ></el-button
                 >
                 <el-button size="large">Réserver une salle</el-button>
             </div>
@@ -65,5 +67,10 @@
     display: flex;
     gap: 16px;
     justify-content: center;
+}
+
+.cta-buttons-links {
+    color: white;
+    text-decoration: none;
 }
 </style>

@@ -25,7 +25,7 @@
                 <BookSlider
                     :books="category.books"
                     :categoryIndex="index"
-                    :sliderPosition="sliderPositions[index]"
+                    :sliderPosition="sliderPositions[index] || 0"
                     :itemWidth="itemWidth"
                     :gapWidth="gapWidth"
                     :visibleItems="visibleItems"
@@ -69,6 +69,12 @@
 </template>
 
 <script setup>
+/**
+ * Page d'accueil de la bibliothèque permettant d'afficher les livres par catégories
+ * avec des fonctionnalités de recherche et d'authentification
+ * @component
+ * @name LibraryIndex
+ */
 defineOptions({
     name: 'LibraryIndex'
 });
@@ -87,19 +93,74 @@ import BookDetailModal from '~/components/modals/BookDetailModal.vue';
 import RegisterModal from '~/components/modals/RegisterModal.vue';
 import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 
-// États UI pour les modales et les formulaires
+/**
+ * États UI pour les modales et les formulaires
+ * @type {Object}
+ */
+
+/**
+ * Terme de recherche saisi par l'utilisateur
+ * @type {import('vue').Ref<string>}
+ */
 const searchQuery = ref('');
+
+/**
+ * État d'affichage du modal de connexion
+ * @type {import('vue').Ref<boolean>}
+ */
 const showLoginModal = ref(false);
+
+/**
+ * État d'affichage du modal d'inscription
+ * @type {import('vue').Ref<boolean>}
+ */
 const showRegisterModal = ref(false);
+
+/**
+ * État d'affichage du modal de récupération de mot de passe
+ * @type {import('vue').Ref<boolean>}
+ */
 const showForgotPasswordModal = ref(false);
+
+/**
+ * État d'affichage du modal de détails d'un livre
+ * @type {import('vue').Ref<boolean>}
+ */
 const showBookModal = ref(false);
+
+/**
+ * Livre sélectionné pour l'affichage des détails
+ * @type {import('vue').Ref<Object|null>}
+ */
 const selectedBook = ref(null);
+
+/**
+ * Email saisi pour l'inscription à la newsletter
+ * @type {import('vue').Ref<string>}
+ */
 const newsletterEmail = ref('');
+
+/**
+ * Données du formulaire de connexion
+ * @type {import('vue').Ref<{email: string, password: string}>}
+ */
 const loginForm = ref({
     email: '',
     password: ''
 });
 
+/**
+ * Données du formulaire d'inscription
+ * @type {import('vue').Ref<{
+ *   firstName: string,
+ *   lastName: string,
+ *   email: string,
+ *   password: string,
+ *   address: string,
+ *   phone: string,
+ *   acceptTerms: boolean
+ * }>}
+ */
 const registerForm = ref({
     firstName: '',
     lastName: '',
@@ -110,7 +171,22 @@ const registerForm = ref({
     acceptTerms: false
 });
 
-// Données de livres
+/**
+ * Collection d'exemples de livres pour la démo
+ * @type {Array<{
+ *   id: number,
+ *   title: string,
+ *   author: string,
+ *   rating: number,
+ *   coverUrl: string,
+ *   available: boolean,
+ *   category: string,
+ *   pages: number,
+ *   year: number,
+ *   isbn: string,
+ *   description?: string
+ * }>}
+ */
 const sampleBooks = [
     {
         id: 1,
@@ -200,7 +276,13 @@ const sampleBooks = [
     }
 ];
 
-// Configuration des catégories de livres
+/**
+ * Catégories de livres affichées sur la page d'accueil
+ * @type {import('vue').Ref<Array<{
+ *   title: string,
+ *   books: Array<Object>
+ * }>>}
+ */
 const categories = ref([
     {
         title: 'Dernières acquisitions',
@@ -223,11 +305,34 @@ const categories = ref([
     }
 ]);
 
-// Configuration et état du slider
-const sliderPositions = ref([]);
-const maxPositions = ref([]);
+/**
+ * Position actuelle de chaque slider de catégorie
+ * @type {import('vue').Ref<Array<number>>}
+ */
+const sliderPositions = ref(categories.value.map(() => 0));
+
+/**
+ * Position maximale autorisée pour chaque slider
+ * @type {import('vue').Ref<Array<number>>}
+ */
+const maxPositions = ref(categories.value.map(() => 0));
+
+/**
+ * Largeur d'un élément de livre dans le slider (en pixels)
+ * @type {import('vue').Ref<number>}
+ */
 const itemWidth = ref(200);
+
+/**
+ * Écart entre les éléments du slider (en pixels)
+ * @type {import('vue').Ref<number>}
+ */
 const gapWidth = ref(16);
+
+/**
+ * Nombre d'éléments visibles dans le slider
+ * @type {import('vue').Ref<number>}
+ */
 const visibleItems = ref(4);
 
 /**
@@ -235,8 +340,6 @@ const visibleItems = ref(4);
  * @returns {void}
  */
 onMounted(() => {
-    sliderPositions.value = categories.value.map(() => 0);
-    maxPositions.value = categories.value.map(() => 0);
     updateItemWidth();
     window.addEventListener('resize', updateItemWidth);
 });
@@ -271,6 +374,7 @@ const querySearch = (queryString, cb) => {
 
 /**
  * Met à jour la largeur des éléments et le nombre d'éléments visibles
+ * en fonction de la taille de l'écran
  * @returns {void}
  */
 const updateItemWidth = () => {
@@ -290,8 +394,8 @@ const updateItemWidth = () => {
 /**
  * Met à jour la position maximale pour un slider de catégorie spécifique
  * @param {Object} params - Paramètres de mise à jour
- * @param {Number} params.categoryIndex - Index de la catégorie à mettre à jour
- * @param {Number} params.maxPosition - Position maximale calculée pour ce slider
+ * @param {number} params.categoryIndex - Index de la catégorie à mettre à jour
+ * @param {number} params.maxPosition - Position maximale calculée pour ce slider
  * @returns {void}
  */
 const updateMaxPosition = ({ categoryIndex, maxPosition }) => {
@@ -300,7 +404,7 @@ const updateMaxPosition = ({ categoryIndex, maxPosition }) => {
 
 /**
  * Calcule la distance de déplacement pour chaque clic sur les boutons du slider
- * @returns {Number} La taille totale d'un élément (largeur + écart)
+ * @returns {number} La taille totale d'un élément (largeur + écart)
  */
 const slideStep = () => {
     return itemWidth.value + gapWidth.value;
@@ -308,7 +412,7 @@ const slideStep = () => {
 
 /**
  * Déplace le slider vers la gauche pour une catégorie spécifique
- * @param {Number} categoryIndex - Index de la catégorie à faire défiler
+ * @param {number} categoryIndex - Index de la catégorie à faire défiler
  * @returns {void}
  */
 const slideLeft = (categoryIndex) => {
@@ -321,7 +425,7 @@ const slideLeft = (categoryIndex) => {
 
 /**
  * Déplace le slider vers la droite pour une catégorie spécifique
- * @param {Number} categoryIndex - Index de la catégorie à faire défiler
+ * @param {number} categoryIndex - Index de la catégorie à faire défiler
  * @returns {void}
  */
 const slideRight = (categoryIndex) => {
@@ -335,6 +439,7 @@ const slideRight = (categoryIndex) => {
 /**
  * Gère l'action de connexion utilisateur et ferme la modal de connexion
  * @returns {void}
+ * @fires login
  */
 const login = () => {
     showLoginModal.value = false;
@@ -344,6 +449,7 @@ const login = () => {
  * Traite une demande de réinitialisation de mot de passe
  * @param {string} email - Adresse email pour laquelle réinitialiser le mot de passe
  * @returns {void}
+ * @fires ElNotification
  */
 const handleResetPasswordRequest = (email) => {
     console.log('Demande de réinitialisation du mot de passe pour:', email);
@@ -360,6 +466,7 @@ const handleResetPasswordRequest = (email) => {
 /**
  * Gère l'enregistrement d'un nouvel utilisateur et ferme la modal d'inscription
  * @returns {void}
+ * @fires register
  */
 const handleRegister = () => {
     showRegisterModal.value = false;
@@ -378,7 +485,11 @@ const showBookDetails = (book) => {
 /**
  * Gère la réservation d'un livre si celui-ci est disponible
  * @param {Object} book - Le livre à réserver
+ * @param {number} book.id - ID unique du livre
+ * @param {string} book.title - Titre du livre
+ * @param {boolean} book.available - Disponibilité du livre
  * @returns {void}
+ * @fires ElNotification
  */
 const reserveBook = (book) => {
     if (book.available) {
