@@ -104,6 +104,7 @@ const props = defineProps({
 const emit = defineEmits([
     'slideLeft',
     'slideRight',
+    'showBookDetails',
     'reserveBook',
     'maxPositionChange'
 ]);
@@ -129,71 +130,31 @@ const isMaxPosition = computed(() => {
 });
 
 /**
- * Émet la position maximale initiale lors du montage du composant
- * @returns {void}
+ * Fonction unique pour émettre la position maximale
  */
-onMounted(() => {
+const emitMaxPosition = () => {
     emit('maxPositionChange', {
         categoryIndex: props.categoryIndex,
         maxPosition: maxSlidePosition.value
     });
-});
+};
 
 /**
- * Observe les changements de la position maximale calculée
- * et émet un événement lorsqu'elle change
- * @returns {void}
+ * Émet la position maximale initiale lors du montage du composant
  */
-watch(maxSlidePosition, (newValue) => {
-    emit('maxPositionChange', {
-        categoryIndex: props.categoryIndex,
-        maxPosition: newValue
-    });
-});
+onMounted(() => emitMaxPosition());
 
 /**
- * Observe les changements du nombre de livres et met à jour
- * la position maximale en conséquence
- * @returns {void}
+ * Observe les changements qui affectent la position maximale
  */
 watch(
-    () => props.books.length,
-    () => {
-        emit('maxPositionChange', {
-            categoryIndex: props.categoryIndex,
-            maxPosition: maxSlidePosition.value
-        });
-    }
-);
-
-/**
- * Observe les changements de la largeur des éléments et met à jour
- * la position maximale en conséquence
- * @returns {void}
- */
-watch(
-    () => props.itemWidth,
-    () => {
-        emit('maxPositionChange', {
-            categoryIndex: props.categoryIndex,
-            maxPosition: maxSlidePosition.value
-        });
-    }
-);
-
-/**
- * Observe les changements du nombre d'éléments visibles et met à jour
- * la position maximale en conséquence
- * @returns {void}
- */
-watch(
-    () => props.visibleItems,
-    () => {
-        emit('maxPositionChange', {
-            categoryIndex: props.categoryIndex,
-            maxPosition: maxSlidePosition.value
-        });
-    }
+    [
+        maxSlidePosition,
+        () => props.books.length,
+        () => props.itemWidth,
+        () => props.visibleItems
+    ],
+    () => emitMaxPosition()
 );
 </script>
 

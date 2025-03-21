@@ -112,15 +112,10 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { Search, Close } from '@element-plus/icons-vue';
+import { Search, Setting, Close } from '@element-plus/icons-vue';
 
-// Définir les props
 const props = defineProps({
     searchText: {
-        type: String,
-        default: ''
-    },
-    placeholder: {
         type: String,
         default: ''
     },
@@ -134,7 +129,6 @@ const props = defineProps({
     }
 });
 
-// Définir les événements
 const emit = defineEmits([
     'update:searchText',
     'search',
@@ -142,70 +136,73 @@ const emit = defineEmits([
     'reset'
 ]);
 
-// État local
-const advancedMode = ref(false);
+// Variables locales
 const localSearchText = ref(props.searchText);
+const advancedSearch = ref(false);
+const categoryFilter = ref([]);
+const authorFilter = ref([]);
+const yearRange = ref([new Date(1900, 0, 1), new Date()]);
+const availabilityFilter = ref('all');
+let searchTimeout = null;
 
-// Formulaire de recherche avancée
-const advancedForm = ref({
-    text: '',
-    categories: [],
-    authors: [],
-    yearRange: null,
-    availability: 'all'
-});
-
-// Synchroniser le texte de recherche
+// Mettre à jour la valeur locale lorsque la prop change
 watch(
     () => props.searchText,
-    (newValue) => {
-        localSearchText.value = newValue;
+    (newVal) => {
+        localSearchText.value = newVal;
     }
 );
 
-watch(
-    () => localSearchText.value,
-    (newValue) => {
-        emit('update:searchText', newValue);
+// Handlers pour les entrées de recherche avec debounce
+const handleInput = () => {
+    emit('update:searchText', localSearchText.value);
+
+    // Annuler le timeout précédent s'il existe
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
     }
-);
 
-// Méthodes
-const showAdvanced = () => {
-    // Initialiser le formulaire avancé avec les valeurs actuelles
-    advancedForm.value.text = localSearchText.value;
-    advancedMode.value = true;
+    // N'émettre la recherche qu'après 300ms d'inactivité et si le texte a au moins 3 caractères
+    if (localSearchText.value.length > 2) {
+        searchTimeout = setTimeout(() => {
+            emit('search', localSearchText.value);
+        }, 300);
+    }
 };
 
-const hideAdvanced = () => {
-    advancedMode.value = false;
-};
-
-const emitSearch = () => {
-    emit('search', localSearchText.value);
-};
-
-const submitAdvancedSearch = () => {
-    emit('advancedSearch', {
-        text: advancedForm.value.text,
-        categories: advancedForm.value.categories,
-        authors: advancedForm.value.authors,
-        yearRange: advancedForm.value.yearRange,
-        availability: advancedForm.value.availability
-    });
-    advancedMode.value = false;
-};
-
-const resetAdvancedSearch = () => {
-    advancedForm.value = {
-        text: '',
-        categories: [],
-        authors: [],
-        yearRange: null,
-        availability: 'all'
-    };
+const handleClear = () => {
     localSearchText.value = '';
+    emit('update:searchText', '');
+    emit('search', '');
+};
+
+// Toggle pour la recherche avancée
+const toggleAdvancedSearch = () => {
+    advancedSearch.value = !advancedSearch.value;
+};
+
+// Réinitialiser les filtres de recherche avancée
+const resetAdvancedSearch = () => {
+    categoryFilter.value = [];
+    authorFilter.value = [];
+    yearRange.value = [new Date(1900, 0, 1), new Date()];
+    availabilityFilter.value = 'all';
+
     emit('reset');
+};
+
+// Appliquer les filtres de recherche avancée
+const applyAdvancedSearch = () => {
+    // Préparer les filtres avec les valeurs par défaut pour éviter les undefined
+    const filters = {
+        text: localSearchText.value || '',
+        categories: categoryFilter.value || [],
+        authors: authorFilter.value || [],
+        yearRange: yearRange.value || [new Date(1900, 0, 1), new Date()],
+        availability: availabilityFilter.value || 'all'
+    };
+
+    emit('advancedSearch', filters);
 };
 </script>
 
