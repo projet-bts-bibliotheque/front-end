@@ -277,23 +277,9 @@ const rules = {
 const handleRegister = () => {
     formRef.value.validate((valid) => {
         if (valid) {
-            // Vérifier une dernière fois si les mots de passe correspondent
-            if (formData.password !== formData.confirmPassword) {
-                ElNotification({
-                    title: 'Erreur',
-                    message: 'Les mots de passe saisis ne correspondent pas.',
-                    type: 'error',
-                    duration: 5000,
-                    position: 'top-right'
-                });
-                return;
-            }
-
             isLoading.value = true;
-            // Simuler un délai d'enregistrement
             setTimeout(() => {
                 isLoading.value = false;
-                // Envoyer les données au composant parent
                 emit('register', {
                     firstName: formData.firstName,
                     lastName: formData.lastName,
@@ -302,7 +288,6 @@ const handleRegister = () => {
                     address: formData.address,
                     phone: formData.phone
                 });
-                // Fermer le modal
                 emit('update:show', false);
             }, 1500);
         }

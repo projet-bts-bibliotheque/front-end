@@ -261,6 +261,7 @@ const querySearch = (queryString, cb) => {
               );
           })
         : [];
+    // Format uniforme pour les résultats de suggestion
     cb(results.map((book) => ({ value: book.title, book })));
 };
 

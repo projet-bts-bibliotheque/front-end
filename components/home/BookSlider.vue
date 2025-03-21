@@ -115,12 +115,17 @@ const emit = defineEmits([
  * @returns {Number} La position maximale en pixels
  */
 const maxSlidePosition = computed(() => {
+    // Total width: largeur totale de tous les éléments + espaces
     const totalWidth = props.books.length * (props.itemWidth + props.gapWidth);
+
+    // Visible width: largeur visible dans la fenêtre
     const visibleWidth =
         props.visibleItems * (props.itemWidth + props.gapWidth);
+
+    // Simplification: différence entre la largeur totale et la largeur visible,
+    // avec un minimum de 0 pour éviter les valeurs négatives
     return Math.max(0, totalWidth - visibleWidth);
 });
-
 /**
  * Détermine si le slider est à sa position maximale
  * @returns {Boolean} Vrai si le slider ne peut plus avancer

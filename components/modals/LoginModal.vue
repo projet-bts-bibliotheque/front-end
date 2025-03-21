@@ -135,13 +135,18 @@ watch(
     { deep: true }
 );
 
-const handleLogin = () => {
-    isLoading.value = true;
-    // Simuler un délai pour montrer l'état de chargement
-    setTimeout(() => {
-        isLoading.value = false;
+const handleLogin = async () => {
+    try {
+        isLoading.value = true;
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         emit('login');
-    }, 1000);
+    } catch (error) {
+        console.error('Erreur de connexion:', error);
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 const switchToRegister = () => {

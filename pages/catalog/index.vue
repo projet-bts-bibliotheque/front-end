@@ -2,7 +2,7 @@
     <div class="catalog-page">
         <Navbar
             v-model:search-query="searchQuery"
-            :querySearch="querySearchBooks"
+            :querySearch="querySearch"
             @showLogin="showLoginModal = true"
         />
 
@@ -677,7 +677,7 @@ const handleCurrentChange = (newPage) => {
 };
 
 // Recherche de suggestions pour l'autocomplete
-const querySearchBooks = (queryString, cb) => {
+const querySearch = (queryString, cb) => {
     const results = queryString
         ? allBooks.value.filter((book) => {
               return (
@@ -688,6 +688,7 @@ const querySearchBooks = (queryString, cb) => {
               );
           })
         : [];
+    // Format uniforme pour les résultats de suggestion
     cb(results.slice(0, 10).map((book) => ({ value: book.title, book })));
 };
 
