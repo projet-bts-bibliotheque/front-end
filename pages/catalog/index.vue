@@ -186,14 +186,87 @@
                                 viewMode === 'list' ? 'list-view' : ''
                             ]"
                         >
-                            <BookCard
+                            <NuxtLink
                                 v-for="book in displayedBooks"
                                 :key="book.id"
-                                :book="book"
-                                :view-mode="viewMode"
-                                @showDetails="showBookDetails"
-                                @reserve="reserveBook"
-                            />
+                                :to="`/book/${book.id}`"
+                                class="book-card"
+                                :class="{ 'list-card': viewMode === 'list' }"
+                            >
+                                <div
+                                    class="book-availability"
+                                    v-if="book.available"
+                                >
+                                    Disponible
+                                </div>
+                                <div
+                                    class="book-availability unavailable"
+                                    v-else
+                                >
+                                    Indisponible
+                                </div>
+                                <div
+                                    class="book-cover"
+                                    :style="{
+                                        backgroundImage: `url(${book.coverUrl})`
+                                    }"
+                                ></div>
+                                <div class="book-info">
+                                    <h3>{{ book.title }}</h3>
+                                    <p class="author">{{ book.author }}</p>
+                                    <div class="rating">
+                                        <el-rate
+                                            v-model="book.rating"
+                                            disabled
+                                            show-score
+                                            text-color="#ff9900"
+                                        />
+                                    </div>
+                                    <div
+                                        v-if="viewMode === 'list'"
+                                        class="book-description"
+                                    >
+                                        {{
+                                            book.description
+                                                ? book.description.substring(
+                                                      0,
+                                                      180
+                                                  ) + '...'
+                                                : ''
+                                        }}
+                                    </div>
+                                    <div
+                                        class="book-details"
+                                        v-if="viewMode === 'list'"
+                                    >
+                                        <span class="detail-item">
+                                            <strong>Catégorie:</strong>
+                                            {{ book.category }}
+                                        </span>
+                                        <span class="detail-item">
+                                            <strong>Année:</strong>
+                                            {{ book.year }}
+                                        </span>
+                                        <span class="detail-item">
+                                            <strong>Pages:</strong>
+                                            {{ book.pages }}
+                                        </span>
+                                    </div>
+                                    <el-button
+                                        class="reserve-button"
+                                        size="small"
+                                        type="primary"
+                                        :disabled="!book.available"
+                                        @click.stop="reserveBook(book)"
+                                    >
+                                        {{
+                                            book.available
+                                                ? 'Réserver'
+                                                : 'Indisponible'
+                                        }}
+                                    </el-button>
+                                </div>
+                            </NuxtLink>
                         </div>
 
                         <div class="pagination-container">
@@ -229,8 +302,6 @@
             @switchToLogin="showLoginModal = true"
         />
 
-        <BookDetailModal v-model:show="showBookModal" :book="selectedBook" />
-
         <ForgotPasswordModal
             v-model:show="showForgotPasswordModal"
             @switchToLogin="showLoginModal = true"
@@ -250,19 +321,15 @@ import Navbar from '~/components/layouts/Navbar.vue';
 import Footer from '~/components/layouts/Footer.vue';
 import LoginModal from '~/components/modals/LoginModal.vue';
 import RegisterModal from '~/components/modals/RegisterModal.vue';
-import BookDetailModal from '~/components/modals/BookDetailModal.vue';
 import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 import SearchBar from '~/components/catalog/SearchBar.vue';
 import FiltersDrawer from '~/components/catalog/FiltersDrawer.vue';
-import BookCard from '~/components/catalog/BookCard.vue';
 
 // État de l'UI pour les modales et les formulaires
 const searchQuery = ref('');
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
 const showForgotPasswordModal = ref(false);
-const showBookModal = ref(false);
-const selectedBook = ref(null);
 const loginForm = ref({
     email: '',
     password: ''
@@ -280,7 +347,7 @@ const registerForm = ref({
 
 // État des filtres
 const selectedCategories = ref([]);
-const selectedAuthors = ref([]); // Nouvelle ref pour les auteurs sélectionnés
+const selectedAuthors = ref([]);
 const availabilityFilter = ref('all');
 const minRating = ref(0);
 const yearRange = ref([1900, 2025]);
@@ -570,7 +637,7 @@ const displayedBooks = computed(() => {
 // Réinitialiser les filtres
 const resetFilters = () => {
     selectedCategories.value = [];
-    selectedAuthors.value = []; // Réinitialiser les auteurs sélectionnés
+    selectedAuthors.value = [];
     availabilityFilter.value = 'all';
     minRating.value = 0;
     yearRange.value = [1900, 2025];
@@ -669,12 +736,6 @@ const resetSearch = () => {
     resetFilters();
 };
 
-// Afficher les détails d'un livre
-const showBookDetails = (book) => {
-    selectedBook.value = book;
-    showBookModal.value = true;
-};
-
 // Réserver un livre
 const reserveBook = (book) => {
     if (book.available) {
@@ -712,7 +773,7 @@ watch(
         searchQuery,
         availabilityFilter,
         selectedCategories,
-        selectedAuthors, // Ajout de cette dépendance
+        selectedAuthors,
         minRating,
         yearRange,
         sortMethod
@@ -902,6 +963,145 @@ watch(
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
+/* Styles des cartes de livre */
+.book-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+@media (hover: hover) {
+    .book-card:hover {
+        transform: translateY(-8px) scale(1.03);
+        z-index: 1;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+}
+
+.book-availability {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #4caf50;
+    color: white;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    z-index: 2;
+}
+
+.book-availability.unavailable {
+    background-color: #f44336;
+}
+
+.book-cover {
+    height: 260px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.book-info {
+    padding: 16px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+}
+
+.book-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+}
+
+.author {
+    margin: 0 0 10px 0;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.rating {
+    margin-top: auto;
+    margin-bottom: 12px;
+}
+
+.reserve-button {
+    width: 100%;
+    margin-top: 8px;
+    font-weight: 600;
+}
+
+/* Style carte en mode liste */
+.book-card.list-card {
+    flex-direction: row;
+    height: 200px;
+}
+
+.list-card .book-cover {
+    width: 130px;
+    height: 100%;
+    min-width: 130px;
+    flex-shrink: 0;
+}
+
+.list-card .book-info {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.list-card .book-info h3 {
+    font-size: 1.2rem;
+    white-space: normal;
+    margin-bottom: 8px;
+}
+
+.list-card .author {
+    font-size: 1rem;
+    margin-bottom: 8px;
+}
+
+.list-card .book-description {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 10px 0;
+    line-height: 1.5;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+.list-card .book-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+}
+
+.list-card .detail-item {
+    color: #666;
+}
+
+.list-card .reserve-button {
+    width: auto;
+    align-self: flex-start;
+}
+
 @media (max-width: 1200px) {
     .catalog-content {
         width: 95%;
@@ -946,6 +1146,16 @@ watch(
     .books-grid {
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: 12px;
+    }
+
+    .book-card.list-card {
+        height: auto;
+        flex-direction: column;
+    }
+
+    .list-card .book-cover {
+        width: 100%;
+        height: 200px;
     }
 }
 

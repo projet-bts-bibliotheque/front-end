@@ -1,131 +1,112 @@
 <template>
-    <div class="catalog-search-bar">
-        <div class="search-container">
+    <div class="search-bar">
+        <div class="simple-search" v-if="!advancedMode">
             <el-input
                 v-model="localSearchText"
-                placeholder="Rechercher par titre, auteur ou mot-clé..."
-                size="large"
+                class="search-input"
+                :placeholder="placeholder || 'Rechercher un livre...'"
                 clearable
-                @input="handleInput"
-                @clear="handleClear"
+                @change="emitSearch"
             >
                 <template #prefix>
                     <el-icon><Search /></el-icon>
                 </template>
-                <template #suffix v-if="localSearchText">
-                    <el-button
-                        type="text"
-                        icon="Close"
-                        @click="handleClear"
-                        circle
-                    />
+                <template #append>
+                    <el-button @click="showAdvanced"
+                        >Recherche avancée</el-button
+                    >
                 </template>
             </el-input>
         </div>
 
-        <div class="search-options">
-            <el-button
-                :type="advancedSearch ? 'primary' : ''"
-                size="large"
-                @click="toggleAdvancedSearch"
-            >
-                <el-icon><Setting /></el-icon>
-                Recherche avancée
-            </el-button>
-        </div>
+        <div class="advanced-search" v-else>
+            <div class="advanced-search-header">
+                <h3>Recherche avancée</h3>
+                <el-button text @click="hideAdvanced">
+                    <el-icon><Close /></el-icon>
+                </el-button>
+            </div>
 
-        <transition name="fade">
-            <div class="advanced-search-panel" v-if="advancedSearch">
-                <div class="advanced-search-fields">
-                    <el-row :gutter="20">
-                        <el-col :span="12" :xs="24">
-                            <el-form-item label="Catégorie">
-                                <el-select
-                                    v-model="categoryFilter"
-                                    placeholder="Toutes les catégories"
-                                    multiple
-                                    size="large"
-                                    collapse-tags
-                                    collapse-tags-tooltip
-                                    style="width: 100%"
-                                >
-                                    <el-option
-                                        v-for="category in categories"
-                                        :key="category.value"
-                                        :label="category.label"
-                                        :value="category.value"
-                                    />
-                                </el-select>
-                            </el-form-item>
-                        </el-col>
+            <el-form @submit.prevent="submitAdvancedSearch">
+                <div class="advanced-search-form">
+                    <div class="form-column">
+                        <el-form-item label="Termes de recherche">
+                            <el-input
+                                v-model="advancedForm.text"
+                                placeholder="Titre, auteur, mots-clés..."
+                            />
+                        </el-form-item>
 
-                        <el-col :span="12" :xs="24">
-                            <el-form-item label="Auteur">
-                                <el-select
-                                    v-model="authorFilter"
-                                    placeholder="Tous les auteurs"
-                                    multiple
-                                    size="large"
-                                    collapse-tags
-                                    collapse-tags-tooltip
-                                    style="width: 100%"
-                                >
-                                    <el-option
-                                        v-for="author in authors"
-                                        :key="author"
-                                        :label="author"
-                                        :value="author"
-                                    />
-                                </el-select>
-                            </el-form-item>
-                        </el-col>
-                    </el-row>
-
-                    <el-row :gutter="20">
-                        <el-col :span="12" :xs="24">
-                            <el-form-item label="Période de publication">
-                                <el-date-picker
-                                    v-model="yearRange"
-                                    type="yearrange"
-                                    range-separator="à"
-                                    start-placeholder="Année début"
-                                    end-placeholder="Année fin"
-                                    size="large"
-                                    style="width: 100%"
-                                    :default-value="[
-                                        new Date(1900, 1, 1),
-                                        new Date()
-                                    ]"
+                        <el-form-item label="Catégories">
+                            <el-select
+                                v-model="advancedForm.categories"
+                                multiple
+                                placeholder="Sélectionner"
+                                style="width: 100%"
+                            >
+                                <el-option
+                                    v-for="category in categories"
+                                    :key="category.value"
+                                    :label="category.label"
+                                    :value="category.value"
                                 />
-                            </el-form-item>
-                        </el-col>
+                            </el-select>
+                        </el-form-item>
+                    </div>
 
-                        <el-col :span="12" :xs="24">
-                            <el-form-item label="Disponibilité">
-                                <el-radio-group
-                                    v-model="availabilityFilter"
-                                    size="large"
+                    <div class="form-column">
+                        <el-form-item label="Auteurs">
+                            <el-select
+                                v-model="advancedForm.authors"
+                                multiple
+                                filterable
+                                placeholder="Sélectionner ou saisir"
+                                style="width: 100%"
+                            >
+                                <el-option
+                                    v-for="author in authors"
+                                    :key="author"
+                                    :label="author"
+                                    :value="author"
+                                />
+                            </el-select>
+                        </el-form-item>
+
+                        <el-form-item label="Année de publication">
+                            <el-date-picker
+                                v-model="advancedForm.yearRange"
+                                type="yearrange"
+                                range-separator="-"
+                                start-placeholder="Début"
+                                end-placeholder="Fin"
+                                style="width: 100%"
+                            />
+                        </el-form-item>
+                    </div>
+
+                    <div class="form-column">
+                        <el-form-item label="Disponibilité">
+                            <el-radio-group v-model="advancedForm.availability">
+                                <el-radio value="all">Tous les livres</el-radio>
+                                <el-radio value="available"
+                                    >Disponibles uniquement</el-radio
                                 >
-                                    <el-radio :value="'all'">Tous</el-radio>
-                                    <el-radio :value="'available'"
-                                        >Disponibles</el-radio
-                                    >
-                                </el-radio-group>
-                            </el-form-item>
-                        </el-col>
-                    </el-row>
+                            </el-radio-group>
+                        </el-form-item>
+                    </div>
                 </div>
 
                 <div class="advanced-search-actions">
-                    <el-button @click="resetAdvancedSearch"
+                    <el-button @click="hideAdvanced">Annuler</el-button>
+                    <el-button type="default" @click="resetAdvancedSearch"
                         >Réinitialiser</el-button
                     >
-                    <el-button type="primary" @click="applyAdvancedSearch"
+                    <el-button type="primary" @click="submitAdvancedSearch"
                         >Rechercher</el-button
                     >
                 </div>
-            </div>
-        </transition>
+            </el-form>
+        </div>
     </div>
 </template>
 
@@ -162,6 +143,7 @@ const categoryFilter = ref([]);
 const authorFilter = ref([]);
 const yearRange = ref([new Date(1900, 0, 1), new Date()]);
 const availabilityFilter = ref('all');
+let searchTimeout = null;
 
 // Mettre à jour la valeur locale lorsque la prop change
 watch(
@@ -171,11 +153,20 @@ watch(
     }
 );
 
-// Handlers pour les entrées de recherche
+// Handlers pour les entrées de recherche avec debounce
 const handleInput = () => {
     emit('update:searchText', localSearchText.value);
+
+    // Annuler le timeout précédent s'il existe
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+
+    // N'émettre la recherche qu'après 300ms d'inactivité et si le texte a au moins 3 caractères
     if (localSearchText.value.length > 2) {
-        emit('search', localSearchText.value);
+        searchTimeout = setTimeout(() => {
+            emit('search', localSearchText.value);
+        }, 300);
     }
 };
 
@@ -216,67 +207,60 @@ const applyAdvancedSearch = () => {
 </script>
 
 <style scoped>
-.catalog-search-bar {
+.search-bar {
+    margin-bottom: 30px;
+}
+
+.search-input {
+    width: 100%;
+}
+
+.advanced-search {
     background-color: white;
     border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 24px;
+    padding: 24px;
+    margin-bottom: 20px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.search-container {
-    margin-bottom: 16px;
-}
-
-.search-options {
+.advanced-search-header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-.advanced-search-panel {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid #f0f0f0;
+.advanced-search-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #1e88e5;
 }
 
-.advanced-search-fields {
-    margin-bottom: 24px;
+.advanced-search-form {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.form-column {
+    flex: 1;
+    min-width: 250px;
 }
 
 .advanced-search-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    margin-top: 16px;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.3s, transform 0.3s;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-    transform: translateY(-10px);
-}
-
-:deep(.el-form-item__label) {
-    font-weight: 600;
-    margin-bottom: 8px;
+    gap: 10px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #f0f0f0;
 }
 
 @media (max-width: 768px) {
-    .catalog-search-bar {
-        padding: 16px;
-    }
-
-    .search-options {
+    .advanced-search-form {
         flex-direction: column;
-    }
-
-    .advanced-search-panel {
-        padding-top: 16px;
+        gap: 0;
     }
 }
 </style>
