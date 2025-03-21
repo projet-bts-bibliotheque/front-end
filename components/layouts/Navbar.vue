@@ -1,23 +1,18 @@
 <template>
     <header class="navbar">
-        <div class="logo">BibliothèqueNuxt</div>
+        <NuxtLink to="/" class="logo">BibliothèqueNuxt</NuxtLink>
         <div class="menu">
             <el-menu
                 :default-active="activeIndex"
                 class="el-menu"
                 mode="horizontal"
+                router
             >
-                <el-menu-item index="1"
-                    ><NuxtLink class="menu-links" to="/"
-                        >Accueil</NuxtLink
-                    ></el-menu-item
+                <el-menu-item index="/" route="/">Accueil</el-menu-item>
+                <el-menu-item index="/catalog" route="/catalog"
+                    >Catalogue</el-menu-item
                 >
-                <el-menu-item index="2">
-                    <NuxtLink class="menu-links" to="/catalog"
-                        >Catalogue</NuxtLink
-                    ></el-menu-item
-                >
-                <el-menu-item index="3">Salles</el-menu-item>
+                <el-menu-item index="/room" route="/room">Salles</el-menu-item>
             </el-menu>
         </div>
         <div class="search-container">
@@ -27,6 +22,7 @@
                 :fetch-suggestions="querySearch"
                 placeholder="Rechercher un livre..."
                 class="search-input"
+                @select="handleSelect"
             >
                 <template #suffix>
                     <el-icon><Search /></el-icon>
@@ -44,10 +40,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Search } from '@element-plus/icons-vue';
+import { useRoute, navigateTo } from 'nuxt/app';
 
-defineProps({
+const props = defineProps({
     searchQuery: {
         type: String,
         required: true
@@ -60,7 +57,21 @@ defineProps({
 
 defineEmits(['update:searchQuery', 'showLogin']);
 
-const activeIndex = ref('1');
+const route = useRoute();
+const activeIndex = ref('/');
+
+onMounted(() => {
+    // Mettre à jour l'index actif en fonction de la route
+    activeIndex.value = route.path;
+});
+
+// Gestion de la sélection dans l'autocomplete
+const handleSelect = (item) => {
+    // Rediriger vers la page du livre
+    if (item.book && item.book.id) {
+        navigateTo(`/book/${item.book.id}`);
+    }
+};
 </script>
 
 <style scoped>
@@ -81,16 +92,18 @@ const activeIndex = ref('1');
     font-weight: 700;
     color: #1e88e5;
     letter-spacing: -0.5px;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.logo:hover {
+    color: #1565c0;
 }
 
 .menu {
     width: 50%;
     display: flex;
     flex-direction: column;
-}
-.menu-links {
-    color: black;
-    text-decoration: none;
 }
 
 .menu .el-menu {
