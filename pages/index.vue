@@ -1,11 +1,5 @@
 <template>
     <div class="library-app">
-        <Navbar
-            v-model:search-query="searchQuery"
-            :querySearch="querySearch"
-            @showLogin="showLoginModal = true"
-        />
-
         <HeroSection />
 
         <FeaturesSection />
@@ -41,8 +35,6 @@
             <NewsletterSection v-model:newsletterEmail="newsletterEmail" />
         </main>
 
-        <Footer />
-
         <LoginModal
             v-model:show="showLoginModal"
             v-model:loginForm="loginForm"
@@ -73,19 +65,16 @@ defineOptions({
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { ArrowRight } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
-import Navbar from '~/components/layouts/Navbar.vue';
 import HeroSection from '~/components/home/HeroSection.vue';
 import FeaturesSection from '~/components/home/FeaturesSection.vue';
 import BookSlider from '~/components/home/BookSlider.vue';
 import StatsSection from '~/components/home/StatsSection.vue';
 import NewsletterSection from '~/components/home/NewsletterSection.vue';
-import Footer from '~/components/layouts/Footer.vue';
 import LoginModal from '~/components/modals/LoginModal.vue';
 import RegisterModal from '~/components/modals/RegisterModal.vue';
 import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 
 // États UI pour les modales et les formulaires
-const searchQuery = ref('');
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
 const showForgotPasswordModal = ref(false);
@@ -243,27 +232,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
     window.removeEventListener('resize', updateItemWidth);
 });
-
-/**
- * Effectue une recherche de livres en fonction d'une chaîne de requête
- * @param {string} queryString - La chaîne de caractères à rechercher
- * @param {Function} cb - Fonction de callback qui recevra les résultats
- * @returns {void}
- */
-const querySearch = (queryString, cb) => {
-    const results = queryString
-        ? sampleBooks.filter((book) => {
-              return (
-                  book.title
-                      .toLowerCase()
-                      .includes(queryString.toLowerCase()) ||
-                  book.author.toLowerCase().includes(queryString.toLowerCase())
-              );
-          })
-        : [];
-    // Format uniforme pour les résultats de suggestion
-    cb(results.map((book) => ({ value: book.title, book })));
-};
 
 /**
  * Met à jour la largeur des éléments et le nombre d'éléments visibles

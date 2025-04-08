@@ -1,11 +1,5 @@
 <template>
     <div class="catalog-page">
-        <Navbar
-            v-model:search-query="searchQuery"
-            :querySearch="querySearch"
-            @showLogin="showLoginModal = true"
-        />
-
         <div class="catalog-hero">
             <div class="overlay"></div>
             <div class="catalog-hero-content">
@@ -285,8 +279,6 @@
             </div>
         </main>
 
-        <Footer />
-
         <LoginModal
             v-model:show="showLoginModal"
             v-model:loginForm="loginForm"
@@ -317,8 +309,6 @@ defineOptions({
 import { ref, computed, onMounted, watch } from 'vue';
 import { ElNotification } from 'element-plus';
 import { Grid, Menu, Filter } from '@element-plus/icons-vue';
-import Navbar from '~/components/layouts/Navbar.vue';
-import Footer from '~/components/layouts/Footer.vue';
 import LoginModal from '~/components/modals/LoginModal.vue';
 import RegisterModal from '~/components/modals/RegisterModal.vue';
 import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
@@ -676,22 +666,6 @@ const handleCurrentChange = (newPage) => {
     });
 };
 
-// Recherche de suggestions pour l'autocomplete
-const querySearch = (queryString, cb) => {
-    const results = queryString
-        ? allBooks.value.filter((book) => {
-              return (
-                  book.title
-                      .toLowerCase()
-                      .includes(queryString.toLowerCase()) ||
-                  book.author.toLowerCase().includes(queryString.toLowerCase())
-              );
-          })
-        : [];
-    // Format uniforme pour les résultats de suggestion
-    cb(results.slice(0, 10).map((book) => ({ value: book.title, book })));
-};
-
 // Gérer la recherche standard
 const handleSearch = (text) => {
     searchQuery.value = text;
@@ -761,7 +735,7 @@ const handleRegister = () => {
 // Gestion de la réinitialisation du mot de passe
 const handleResetPasswordRequest = (email) => {
     ElNotification({
-        title: 'Email envoyé',
+        title: `email envoyé à ${email}`,
         message:
             'Un lien de réinitialisation a été envoyé à votre adresse email.',
         type: 'success'
