@@ -467,7 +467,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useHead } from '@vueuse/head';
 import {
     Star,
     StarFilled,
@@ -475,12 +477,8 @@ import {
     ArrowLeft,
     ArrowRight,
     Document,
-    User,
     Reading,
-    Message,
-    Link,
-    Share,
-    Notification
+    Share
 } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
 import Navbar from '~/components/layouts/Navbar.vue';
@@ -965,18 +963,6 @@ const addToFavorites = () => {
 
 const shareBook = () => {
     showShareDialog.value = true;
-};
-
-const copyLink = () => {
-    // Simulation de la copie du lien
-    navigator.clipboard.writeText(window.location.href).then(() => {
-        ElNotification({
-            title: 'Lien copié',
-            message: 'Le lien du livre a été copié dans le presse-papier.',
-            type: 'success'
-        });
-        showShareDialog.value = false;
-    });
 };
 
 // Fonctions d'authentification simulées
