@@ -237,7 +237,7 @@ onMounted(() => {
 });
 
 /**
- * Nettoie les écouteurs d'événements avant le démontage du composant
+ * Nettoie les listeners d'événements avant le démontage du composant
  * @returns {void}
  */
 onBeforeUnmount(() => {

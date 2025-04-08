@@ -124,14 +124,14 @@
                                 <el-icon><Document /></el-icon>
                                 <span class="meta-label">Catégorie:</span>
                                 <span class="meta-value">{{
-                                    book.category || 'Fiction'
+                                    book.category || ''
                                 }}</span>
                             </div>
                             <div class="meta-item">
                                 <el-icon><Document /></el-icon>
                                 <span class="meta-label">Pages:</span>
                                 <span class="meta-value">{{
-                                    book.pages || '256'
+                                    book.pages || '0'
                                 }}</span>
                             </div>
                             <div class="meta-item">
