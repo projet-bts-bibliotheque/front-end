@@ -25,15 +25,20 @@
                 <p>Bienvenue sur la bibliothèque de l'ESNA</p>
             </div>
 
-            <el-form class="login-form">
-                <el-form-item>
+            <el-form
+                class="login-form"
+                :model="formData"
+                :rules="rules"
+                ref="loginFormRef"
+            >
+                <el-form-item prop="email">
                     <el-input
                         v-model="formData.email"
                         placeholder="Email"
                         prefix-icon="Message"
                     ></el-input>
                 </el-form-item>
-                <el-form-item>
+                <el-form-item prop="password">
                     <el-input
                         v-model="formData.password"
                         type="password"
@@ -85,8 +90,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, reactive } from 'vue';
 import { Close } from '@element-plus/icons-vue';
+import { ElNotification } from 'element-plus';
 
 const props = defineProps({
     show: {
@@ -107,19 +113,43 @@ const emit = defineEmits([
     'switchToForgotPassword'
 ]);
 
-const formData = ref({
+const formData = reactive({
     email: props.loginForm.email,
     password: props.loginForm.password
 });
 
+const loginFormRef = ref(null);
 const rememberMe = ref(false);
 const isLoading = ref(false);
+
+// Règles de validation
+const rules = {
+    email: [
+        {
+            required: true,
+            message: 'Veuillez saisir votre email',
+            trigger: 'blur'
+        },
+        {
+            type: 'email',
+            message: 'Veuillez saisir un email valide',
+            trigger: 'blur'
+        }
+    ],
+    password: [
+        {
+            required: true,
+            message: 'Veuillez saisir votre mot de passe',
+            trigger: 'blur'
+        }
+    ]
+};
 
 watch(
     () => props.loginForm,
     (newVal) => {
-        formData.value.email = newVal.email;
-        formData.value.password = newVal.password;
+        formData.email = newVal.email;
+        formData.password = newVal.password;
     },
     { deep: true }
 );
@@ -137,13 +167,58 @@ watch(
 
 const handleLogin = async () => {
     try {
+        // Valider le formulaire
+        await loginFormRef.value.validate();
+
         isLoading.value = true;
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Appel à l'API d'authentification
+        const response = await fetch('http://localhost:1234/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: formData.email,
+                password: formData.password
+            })
+        });
 
-        emit('login');
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Erreur lors de la connexion');
+        }
+
+        // Stocker le token dans le localStorage ou sessionStorage selon l'option "se souvenir de moi"
+        const storage = rememberMe.value ? localStorage : sessionStorage;
+        storage.setItem('auth_token', data.access_token);
+        storage.setItem('token_type', data.token_type);
+
+        // Afficher une notification de succès
+        ElNotification({
+            title: 'Connexion réussie',
+            message: 'Vous êtes maintenant connecté',
+            type: 'success'
+        });
+
+        // Émettre l'événement de connexion pour informer le composant parent
+        emit('login', {
+            token: data.access_token,
+            tokenType: data.token_type
+        });
+
+        // Fermer la fenêtre modale
+        emit('update:show', false);
     } catch (error) {
+        // Gérer les erreurs
         console.error('Erreur de connexion:', error);
+
+        ElNotification({
+            title: 'Échec de la connexion',
+            message: error.message || 'Identifiants invalides',
+            type: 'error'
+        });
     } finally {
         isLoading.value = false;
     }

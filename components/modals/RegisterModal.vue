@@ -33,17 +33,17 @@
                 label-position="top"
             >
                 <div class="form-row">
-                    <el-form-item label="Prénom" prop="firstName">
+                    <el-form-item label="Prénom" prop="first_name">
                         <el-input
-                            v-model="formData.firstName"
+                            v-model="formData.first_name"
                             placeholder="Votre prénom"
                             prefix-icon="User"
                         ></el-input>
                     </el-form-item>
 
-                    <el-form-item label="Nom" prop="lastName">
+                    <el-form-item label="Nom" prop="last_name">
                         <el-input
-                            v-model="formData.lastName"
+                            v-model="formData.last_name"
                             placeholder="Votre nom"
                             prefix-icon="User"
                         ></el-input>
@@ -148,8 +148,8 @@ const props = defineProps({
     registerForm: {
         type: Object,
         default: () => ({
-            firstName: '',
-            lastName: '',
+            first_name: '',
+            last_name: '',
             email: '',
             password: '',
             confirmPassword: '',
@@ -171,8 +171,8 @@ const formRef = ref(null);
 const isLoading = ref(false);
 
 const formData = reactive({
-    firstName: props.registerForm.firstName || '',
-    lastName: props.registerForm.lastName || '',
+    first_name: props.registerForm.first_name || '',
+    last_name: props.registerForm.last_name || '',
     email: props.registerForm.email || '',
     password: props.registerForm.password || '',
     confirmPassword: props.registerForm.confirmPassword || '',
@@ -194,7 +194,7 @@ const validatePasswordMatch = (rule, value, callback) => {
 
 // Règles de validation du formulaire
 const rules = {
-    firstName: [
+    first_name: [
         {
             required: true,
             message: 'Veuillez saisir votre prénom',
@@ -206,7 +206,7 @@ const rules = {
             trigger: 'blur'
         }
     ],
-    lastName: [
+    last_name: [
         {
             required: true,
             message: 'Veuillez saisir votre nom',
@@ -275,21 +275,66 @@ const rules = {
 };
 
 const handleRegister = () => {
-    formRef.value.validate((valid) => {
+    formRef.value.validate(async (valid) => {
         if (valid) {
             isLoading.value = true;
-            setTimeout(() => {
-                isLoading.value = false;
-                emit('register', {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    password: formData.password,
-                    address: formData.address,
-                    phone: formData.phone
+
+            // Préparer les données pour l'API
+            const apiData = {
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                email: formData.email,
+                password: formData.password,
+                address: formData.address,
+                phone: formData.phone
+            };
+
+            try {
+                // Appel à l'API d'inscription
+                const response = await fetch(
+                    'http://localhost:1234/api/register',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(apiData)
+                    }
+                );
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.message || "Erreur lors de l'inscription"
+                    );
+                }
+
+                // Afficher un message de succès
+                ElNotification({
+                    title: 'Succès',
+                    message: 'Votre compte a été créé avec succès',
+                    type: 'success'
                 });
+
+                // Émettre l'événement register avec les données
+                emit('register', apiData);
+
+                // Fermer la modal
                 emit('update:show', false);
-            }, 1500);
+            } catch (error) {
+                // Afficher une notification d'erreur
+                ElNotification({
+                    title: 'Erreur',
+                    message:
+                        error.message ||
+                        "Une erreur est survenue lors de l'inscription",
+                    type: 'error'
+                });
+                console.error("Erreur d'inscription:", error);
+            } finally {
+                isLoading.value = false;
+            }
         }
     });
 };
