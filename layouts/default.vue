@@ -34,6 +34,15 @@
 </template>
 
 <script setup>
+import Navbar from '../components/layouts/Navbar.vue';
+import Footer from '../components/layouts/Footer.vue';
+import LoginModal from '../components/modals/LoginModal.vue';
+import RegisterModal from '../components/modals/RegisterModal.vue';
+import ForgotPasswordModal from '../components/modals/ForgotPasswordModal.vue';
+
+defineOptions({
+    name: 'DefaultLayout'
+});
 import { ref } from 'vue';
 import { ElNotification } from 'element-plus';
 
@@ -139,10 +148,10 @@ const handleRegister = () => {
  * @returns {void}
  */
 const handleResetPasswordRequest = (email) => {
+    console.log(`Demande de réinitialisation envoyée à: ${email}`);
     ElNotification({
         title: 'Email envoyé',
-        message:
-            'Un lien de réinitialisation a été envoyé à votre adresse email.',
+        message: `Un lien de réinitialisation a été envoyé à ${email}.`,
         type: 'success'
     });
 };
