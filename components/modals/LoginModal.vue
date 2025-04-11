@@ -185,27 +185,35 @@ const handleLogin = async () => {
         });
 
         const data = await response.json();
-
+        console.log(data);
         if (!response.ok) {
             throw new Error(data.message || 'Erreur lors de la connexion');
         }
+
+        const respons2 = await fetch('http://localhost:1234/api/me', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${data.access_token}`
+            }
+        });
+
+        const data2 = await respons2.json();
+        console.log(data2);
 
         // Stocker le token dans le localStorage ou sessionStorage selon l'option "se souvenir de moi"
         const storage = rememberMe.value ? localStorage : sessionStorage;
         storage.setItem('auth_token', data.access_token);
         storage.setItem('token_type', data.token_type);
 
+        // Émettre l'événement de connexion pour informer le composant parent
+        emit('login', data2);
+
         // Afficher une notification de succès
         ElNotification({
             title: 'Connexion réussie',
             message: 'Vous êtes maintenant connecté',
             type: 'success'
-        });
-
-        // Émettre l'événement de connexion pour informer le composant parent
-        emit('login', {
-            token: data.access_token,
-            tokenType: data.token_type
         });
 
         // Fermer la fenêtre modale

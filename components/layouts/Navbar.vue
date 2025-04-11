@@ -29,7 +29,41 @@
                 </template>
             </el-autocomplete>
         </div>
+
+        <!-- Nouvel affichage conditionnel pour l'utilisateur connecté ou le bouton de connexion -->
+        <div v-if="isLoggedIn" class="user-profile">
+            <el-dropdown trigger="click" @command="handleCommand">
+                <div class="user-dropdown-link">
+                    <el-avatar
+                        :size="32"
+                        :src="currentUser.avatar || '/api/placeholder/100/100'"
+                    ></el-avatar>
+                    <span class="user-name"
+                        >{{ currentUser.firstName }}
+                        {{ currentUser.lastName }}</span
+                    >
+                    <el-icon><arrow-down /></el-icon>
+                </div>
+                <template #dropdown>
+                    <el-dropdown-menu>
+                        <el-dropdown-item command="profile"
+                            >Mon profil</el-dropdown-item
+                        >
+                        <el-dropdown-item command="borrows"
+                            >Mes emprunts</el-dropdown-item
+                        >
+                        <el-dropdown-item command="reservations"
+                            >Mes réservations</el-dropdown-item
+                        >
+                        <el-dropdown-item divided command="logout"
+                            >Se déconnecter</el-dropdown-item
+                        >
+                    </el-dropdown-menu>
+                </template>
+            </el-dropdown>
+        </div>
         <el-button
+            v-else
             type="primary"
             class="auth-button"
             @click="$emit('showLogin')"
@@ -40,8 +74,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { Search } from '@element-plus/icons-vue';
+import { ref, onMounted, computed } from 'vue';
+import { Search, ArrowDown } from '@element-plus/icons-vue';
 import { useRoute, navigateTo } from 'nuxt/app';
 
 const props = defineProps({
@@ -52,10 +86,24 @@ const props = defineProps({
     querySearch: {
         type: Function,
         required: true
+    },
+    isLoggedIn: {
+        type: Boolean,
+        default: false
+    },
+    currentUser: {
+        type: Object,
+        default: () => ({
+            id: null,
+            firstName: '',
+            lastName: '',
+            email: '',
+            avatar: null
+        })
     }
 });
 
-defineEmits(['update:searchQuery', 'showLogin']);
+const emit = defineEmits(['update:searchQuery', 'showLogin', 'logout']);
 
 const route = useRoute();
 const activeIndex = ref('/');
@@ -70,6 +118,24 @@ const handleSelect = (item) => {
     // Rediriger vers la page du livre
     if (item.book && item.book.id) {
         navigateTo(`/book/${item.book.id}`);
+    }
+};
+
+// Gérer les commandes du menu déroulant
+const handleCommand = (command) => {
+    switch (command) {
+        case 'profile':
+            navigateTo('/profile');
+            break;
+        case 'borrows':
+            navigateTo('/profile/borrows');
+            break;
+        case 'reservations':
+            navigateTo('/profile/reservations');
+            break;
+        case 'logout':
+            emit('logout');
+            break;
     }
 };
 </script>
@@ -122,6 +188,31 @@ const handleSelect = (item) => {
     font-weight: 600;
 }
 
+/* Style pour l'utilisateur connecté */
+.user-profile {
+    display: flex;
+    align-items: center;
+}
+
+.user-dropdown-link {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 20px;
+    transition: background-color 0.3s;
+}
+
+.user-dropdown-link:hover {
+    background-color: #f5f7fa;
+}
+
+.user-name {
+    margin: 0 8px;
+    font-weight: 600;
+    color: #333;
+}
+
 @media (max-width: 768px) {
     .navbar {
         flex-direction: column;
@@ -144,6 +235,16 @@ const handleSelect = (item) => {
 
     .auth-button {
         width: 100%;
+    }
+
+    .user-profile {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .user-dropdown-link {
+        width: 100%;
+        justify-content: center;
     }
 }
 </style>

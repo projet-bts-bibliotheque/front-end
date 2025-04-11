@@ -4,6 +4,9 @@
             v-model:search-query="searchQuery"
             :querySearch="querySearch"
             @showLogin="showLoginModal = true"
+            @logout="handleLogout"
+            :isLoggedIn="isLoggedIn"
+            :currentUser="currentUser"
         />
 
         <slot />
@@ -13,7 +16,7 @@
         <LoginModal
             v-model:show="showLoginModal"
             v-model:loginForm="loginForm"
-            @login="login"
+            @login="handleLogin"
             @switchToRegister="showRegisterModal = true"
             @switchToForgotPassword="showForgotPasswordModal = true"
         />
@@ -43,7 +46,7 @@ import ForgotPasswordModal from '../components/modals/ForgotPasswordModal.vue';
 defineOptions({
     name: 'DefaultLayout'
 });
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ElNotification } from 'element-plus';
 
 // États UI pour les modales et les formulaires
@@ -65,6 +68,48 @@ const registerForm = ref({
     phone: '',
     acceptTerms: false
 });
+
+// État de connexion de l'utilisateur
+const isLoggedIn = ref(false);
+const currentUser = ref({
+    id: null,
+    firstName: '',
+    lastName: '',
+    email: ''
+});
+
+// Vérifier l'état de connexion au chargement
+onMounted(() => {
+    checkLoginStatus();
+});
+
+// Vérifier si l'utilisateur est connecté en vérifiant le localStorage ou sessionStorage
+const checkLoginStatus = () => {
+    const token =
+        localStorage.getItem('auth_token') ||
+        sessionStorage.getItem('auth_token');
+
+    if (token) {
+        // Dans une application réelle, vous pourriez faire une requête API pour
+        // récupérer les informations de l'utilisateur avec le token
+        // Ici, nous allons simuler un utilisateur connecté avec des données fictives
+        isLoggedIn.value = true;
+        currentUser.value = {
+            id: 1,
+            firstName: 'Jean',
+            lastName: 'Dupont',
+            email: 'jean.dupont@example.com'
+        };
+    } else {
+        isLoggedIn.value = false;
+        currentUser.value = {
+            id: null,
+            firstName: '',
+            lastName: '',
+            email: ''
+        };
+    }
+};
 
 // Sample books data for search autocomplete
 const sampleBooks = [
@@ -117,27 +162,80 @@ const querySearch = (queryString, cb) => {
 };
 
 /**
- * Gère l'action de connexion utilisateur et ferme la modal de connexion
+ * Gère l'action de connexion utilisateur
+ * @param {Object} loginData - Données de connexion avec token
  * @returns {void}
  */
-const login = () => {
-    showLoginModal.value = false;
+const handleLogin = (loginData) => {
+    // Stockage du token déjà fait dans le composant LoginModal
+
+    // Mise à jour de l'état de connexion et des informations utilisateur
+    isLoggedIn.value = true;
+
+    // Dans une app réelle, ces infos viendraient de l'API
+    // Ici nous utilisons des valeurs fictives
+    currentUser.value = {
+        id: loginData.id,
+        firstName: loginData.first_name,
+        lastName: loginData.last_name,
+        email: loginData.email
+    };
+
     ElNotification({
         title: 'Connecté',
         message: 'Vous êtes maintenant connecté.',
         type: 'success'
     });
+
+    showLoginModal.value = false;
 };
 
 /**
  * Gère l'enregistrement d'un nouvel utilisateur et ferme la modal d'inscription
+ * @param {Object} userData - Données de l'utilisateur inscrit
  * @returns {void}
  */
-const handleRegister = () => {
+const handleRegister = (userData) => {
     showRegisterModal.value = false;
+
+    // Dans une application réelle, on attendrait que l'utilisateur confirme son email
+    // Pour cette démo, on le connecte directement
+    isLoggedIn.value = true;
+    currentUser.value = {
+        id: Date.now(), // ID simulé
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        email: userData.email
+    };
+
     ElNotification({
         title: 'Compte créé',
         message: 'Votre compte a été créé avec succès.',
+        type: 'success'
+    });
+};
+
+/**
+ * Gère la déconnexion de l'utilisateur
+ * @returns {void}
+ */
+const handleLogout = () => {
+    // Supprimer le token d'authentification
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
+
+    // Réinitialiser l'état de connexion
+    isLoggedIn.value = false;
+    currentUser.value = {
+        id: null,
+        firstName: '',
+        lastName: '',
+        email: ''
+    };
+
+    ElNotification({
+        title: 'Déconnecté',
+        message: 'Vous avez été déconnecté avec succès.',
         type: 'success'
     });
 };
