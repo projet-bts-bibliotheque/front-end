@@ -90,9 +90,12 @@
 </template>
 
 <script setup>
+import { useUsersStore } from '@/stores/user';
 import { ref, watch, reactive } from 'vue';
 import { Close } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
+
+const usersStore = useUsersStore();
 
 const props = defineProps({
     show: {
@@ -172,42 +175,14 @@ const handleLogin = async () => {
 
         isLoading.value = true;
 
-        // Appel à l'API d'authentification
-        const response = await fetch('http://localhost:1234/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                email: formData.email,
-                password: formData.password
-            })
-        });
+        // Appel au store pour l'authentification
+        const data = await usersStore.login(formData.email, formData.password);
 
-        const data = await response.json();
-        console.log(data);
-        if (!response.ok) {
-            throw new Error(data.message || 'Erreur lors de la connexion');
-        }
-
-        const respons2 = await fetch('http://localhost:1234/api/me', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${data.access_token}`
-            }
-        });
-
-        const data2 = await respons2.json();
-        console.log(data2);
-
-        // Stocker le token dans le localStorage ou sessionStorage selon l'option "se souvenir de moi"
-        const storage = rememberMe.value ? localStorage : sessionStorage;
-        storage.setItem('auth_token', data.access_token);
-        storage.setItem('token_type', data.token_type);
+        // Récupérer les données utilisateur
+        await usersStore.fetchUserData();
 
         // Émettre l'événement de connexion pour informer le composant parent
-        emit('login', data2);
+        emit('login', usersStore.user);
 
         // Afficher une notification de succès
         ElNotification({

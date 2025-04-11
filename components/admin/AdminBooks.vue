@@ -239,7 +239,7 @@
                                 margin-right: 20px;
                             "
                         />
-                        <el-upload
+                        <!-- <el-upload
                             class="cover-upload-button"
                             action="#"
                             :auto-upload="false"
@@ -253,7 +253,12 @@
                                         : 'Ajouter une couverture'
                                 }}
                             </el-button>
-                        </el-upload>
+                        </el-upload> -->
+                        <el-input
+                            v-model="bookModal.form.coverUrl"
+                            placeholder="URL de la couverture"
+                            style="width: 100%"
+                        />
                     </div>
                 </el-form-item>
 
@@ -347,88 +352,7 @@ const categories = [
 ];
 
 // Données des livres
-const books = ref([
-    {
-        id: 1,
-        title: "L'Étranger",
-        author: 'Albert Camus',
-        rating: 4.5,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'roman',
-        pages: 185,
-        year: 1942,
-        isbn: '978-2-07-036002-4',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "L'Étranger est un roman d'Albert Camus, publié en 1942. Il prend place dans la tétralogie que Camus nommera « cycle de l'absurde » qui décrit les fondements de la philosophie camusienne : l'absurde."
-    },
-    {
-        id: 2,
-        title: 'Harry Potter et la pierre philosophale',
-        author: 'J.K. Rowling',
-        rating: 4.8,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'fantasy',
-        pages: 320,
-        year: 1997,
-        isbn: '978-2-07-054602-9',
-        language: 'Français',
-        publisher: 'Éditions Gallimard Jeunesse',
-        description:
-            "Le jour de ses onze ans, Harry Potter, un orphelin élevé par un oncle et une tante qui le détestent, voit son existence bouleversée. Un géant vient le chercher pour l'emmener à Poudlard, la célèbre école de sorcellerie où une place l'attend depuis toujours."
-    },
-    {
-        id: 3,
-        title: 'Le Petit Prince',
-        author: 'Antoine de Saint-Exupéry',
-        rating: 4.9,
-        coverUrl: '/api/placeholder/150/220',
-        available: false,
-        category: 'roman',
-        pages: 96,
-        year: 1943,
-        isbn: '978-2-07-051328-4',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "Un pilote d'avion, contraint d'atterrir dans le désert du Sahara à la suite d'une panne de moteur, fait la rencontre d'un enfant venu des étoiles. Ce dernier lui raconte son voyage de planète en planète et sa découverte de l'étrange comportement des grandes personnes."
-    },
-    {
-        id: 4,
-        title: '1984',
-        author: 'George Orwell',
-        rating: 4.7,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'science-fiction',
-        pages: 328,
-        year: 1949,
-        isbn: '978-2-07-036822-8',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "Dans une société totalitaire où le gouvernement, dirigé par Big Brother, contrôle jusqu'aux pensées des individus, Winston Smith, employé du Ministère de la Vérité, falsifie l'histoire en réécrivant les archives."
-    },
-    {
-        id: 5,
-        title: 'Les Misérables',
-        author: 'Victor Hugo',
-        rating: 4.6,
-        coverUrl: '/api/placeholder/150/220',
-        available: false,
-        category: 'roman',
-        pages: 1900,
-        year: 1862,
-        isbn: '978-2-253-09634-8',
-        language: 'Français',
-        publisher: 'Le Livre de Poche',
-        description:
-            "Les Misérables est un roman de Victor Hugo paru en 1862. Il décrit la vie de pauvres gens dans Paris et la France provinciale du XIXe siècle, l'auteur s'attachant plus particulièrement au destin du bagnard Jean Valjean."
-    }
-]);
+const books = ref([]);
 
 // État du modal d'ajout/édition
 const bookModal = ref({
@@ -595,11 +519,11 @@ const handleCoverChange = (file) => {
 };
 
 const saveBook = () => {
-    bookFormRef.value.validate((valid) => {
+    bookFormRef.value.validate(async (valid) => {
         if (valid) {
             bookModal.value.loading = true;
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 if (bookModal.value.isEdit) {
                     // Mettre à jour le livre existant
                     const index = books.value.findIndex(
@@ -626,12 +550,52 @@ const saveBook = () => {
                         rating: 0
                     };
 
-                    books.value.push(newBook);
+                    try {
+                        const apiData = {
+                            ibsn: newBook.isbn,
+                            title: newBook.title,
+                            thumbnails: newBook.coverUrl,
+                            author: newBook.author,
+                            editor: newBook.publisher,
+                            averageRating: newBook.rating,
+                            ratingss_count: 0,
+                            keywoard: [newBook.category],
+                            summary: newBook.description,
+                            publish_year: newBook.year
+                        };
 
-                    ElMessage({
-                        type: 'success',
-                        message: 'Livre ajouté avec succès'
-                    });
+                        const response = await fetch(
+                            'http://localhost:1234/api/books',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(apiData)
+                            }
+                        );
+                        ElMessage({
+                            type: 'success',
+                            message: 'Livre ajouté avec succès'
+                        });
+                        const data = await response.json();
+                        console.log(data);
+                        const bookresponse = await fetch(
+                            `http://localhost:1234/api/books`
+                        );
+                        const bookdata = await bookresponse.json();
+                        console.log(bookdata);
+                        books.value = bookdata;
+                    } catch (error) {
+                        console.error(
+                            "Erreur lors de l'ajout du livre:",
+                            error
+                        );
+                        ElMessage({
+                            type: 'error',
+                            message: `Erreur lors de l'ajout du livre : ${error}`
+                        });
+                    }
                 }
 
                 bookModal.value.loading = false;

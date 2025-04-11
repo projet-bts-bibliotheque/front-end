@@ -37,6 +37,7 @@
 </template>
 
 <script setup>
+import { useUsersStore } from '@/stores/user';
 import Navbar from '../components/layouts/Navbar.vue';
 import Footer from '../components/layouts/Footer.vue';
 import LoginModal from '../components/modals/LoginModal.vue';
@@ -48,6 +49,8 @@ defineOptions({
 });
 import { ref, onMounted } from 'vue';
 import { ElNotification } from 'element-plus';
+
+const usersStore = useUsersStore();
 
 // États UI pour les modales et les formulaires
 const searchQuery = ref('');
@@ -95,10 +98,10 @@ const checkLoginStatus = () => {
         // Ici, nous allons simuler un utilisateur connecté avec des données fictives
         isLoggedIn.value = true;
         currentUser.value = {
-            id: 1,
-            firstName: 'Jean',
-            lastName: 'Dupont',
-            email: 'jean.dupont@example.com'
+            id: usersStore.userId,
+            firstName: usersStore.firstName,
+            lastName: usersStore.lastName,
+            email: usersStore.email
         };
     } else {
         isLoggedIn.value = false;

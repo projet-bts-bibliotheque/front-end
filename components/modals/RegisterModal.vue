@@ -118,8 +118,7 @@
                     @click="handleRegister"
                     :loading="isLoading"
                     :disabled="!formData.acceptTerms"
-                >
-                    S'inscrire
+                    >reg S'inscrire
                 </el-button>
             </el-form>
 
@@ -136,9 +135,12 @@
 </template>
 
 <script setup>
+import { useUsersStore } from '@/stores/user';
 import { ref, reactive } from 'vue';
 import { Close } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
+
+const userStore = useUsersStore();
 
 const props = defineProps({
     show: {
@@ -291,24 +293,13 @@ const handleRegister = () => {
 
             try {
                 // Appel à l'API d'inscription
-                const response = await fetch(
-                    'http://localhost:1234/api/register',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(apiData)
-                    }
-                );
+                const response = userStore.register(apiData);
+                if (!response || !response.ok) {
+                    throw new Error("Erreur lors de l'inscription");
+                    console.log(response.json());
+                }
 
                 const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(
-                        result.message || "Erreur lors de l'inscription"
-                    );
-                }
 
                 // Afficher un message de succès
                 ElNotification({
