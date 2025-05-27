@@ -184,6 +184,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     }
 
     // Fournir les fonctions d'authentification à l'application
+    // UTILISER SEULEMENT nuxtApp.provide() - pas de return avec provide
     nuxtApp.provide('auth', {
         // État
         state: authState,
@@ -199,22 +200,5 @@ export default defineNuxtPlugin(async (nuxtApp) => {
         isStaff
     });
 
-    return {
-        provide: {
-            auth: {
-                // État
-                state: authState,
-
-                // Actions
-                login,
-                logout,
-                checkAuth,
-
-                // Utilitaires
-                hasAccess,
-                isAdmin,
-                isStaff
-            }
-        }
-    };
+    // Ne pas retourner d'objet provide ici
 });

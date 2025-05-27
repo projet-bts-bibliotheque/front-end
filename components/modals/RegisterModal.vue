@@ -118,7 +118,8 @@
                     @click="handleRegister"
                     :loading="isLoading"
                     :disabled="!formData.acceptTerms"
-                    >reg S'inscrire
+                >
+                    S'inscrire
                 </el-button>
             </el-form>
 

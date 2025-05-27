@@ -56,6 +56,25 @@ const showRegisterModal = ref(false);
 const newsletterEmail = ref('');
 const rooms = ref([]);
 
+// ✅ AJOUT DE LA VARIABLE MANQUANTE
+const isLoading = ref(false);
+
+// ✅ AJOUT DES VARIABLES MANQUANTES POUR LA RÉSERVATION
+const showReservationModal = ref(false);
+const showConfirmationModal = ref(false);
+const selectedRoom = ref(null);
+const reservationId = ref('');
+const isSubmitting = ref(false);
+const reservationFormRef = ref(null);
+const reservationForm = ref({
+    date: new Date(),
+    timeSlot: '',
+    participants: 1,
+    purpose: '',
+    comment: '',
+    acceptTerms: false
+});
+
 async function loadRooms() {
     isLoading.value = true;
     try {
