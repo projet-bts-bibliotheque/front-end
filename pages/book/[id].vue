@@ -1,11 +1,5 @@
 <template>
     <div class="library-app">
-        <Navbar
-            v-model:search-query="searchQuery"
-            :querySearch="querySearch"
-            @showLogin="showLoginModal = true"
-        />
-
         <div class="book-page" v-if="book">
             <!-- Book Hero Section -->
             <div class="book-hero-section">
@@ -439,30 +433,6 @@
                 </div>
             </div>
         </div>
-
-        <Footer />
-
-        <!-- Modals -->
-        <LoginModal
-            v-model:show="showLoginModal"
-            v-model:loginForm="loginForm"
-            @login="login"
-            @switchToRegister="showRegisterModal = true"
-            @switchToForgotPassword="showForgotPasswordModal = true"
-        />
-
-        <RegisterModal
-            v-model:show="showRegisterModal"
-            :registerForm="registerForm"
-            @register="handleRegister"
-            @switchToLogin="showLoginModal = true"
-        />
-
-        <ForgotPasswordModal
-            v-model:show="showForgotPasswordModal"
-            @switchToLogin="showLoginModal = true"
-            @resetPasswordRequest="handleResetPasswordRequest"
-        />
     </div>
 </template>
 
@@ -481,11 +451,6 @@ import {
     Share
 } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
-import Navbar from '~/components/layouts/Navbar.vue';
-import Footer from '~/components/layouts/Footer.vue';
-import LoginModal from '~/components/modals/LoginModal.vue';
-import RegisterModal from '~/components/modals/RegisterModal.vue';
-import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 
 // Définir les options pour le composant
 defineOptions({
@@ -501,225 +466,8 @@ const bookId = parseInt(route.params.id);
 const searchQuery = ref('');
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
-const showForgotPasswordModal = ref(false);
 const showShareDialog = ref(false);
 const isFavorite = ref(false);
-const loginForm = ref({
-    email: '',
-    password: ''
-});
-
-const registerForm = ref({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    address: '',
-    phone: '',
-    acceptTerms: false
-});
-
-// Données de livres (simulées, à remplacer par un appel API)
-const sampleBooks = [
-    {
-        id: 1,
-        title: "L'Étranger",
-        author: 'Albert Camus',
-        rating: 4.5,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Roman philosophique',
-        pages: 185,
-        year: 1942,
-        isbn: '978-2-07-036002-4',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "L'Étranger est un roman d'Albert Camus, publié en 1942. Il prend place dans la tétralogie que Camus nommera « cycle de l'absurde » qui décrit les fondements de la philosophie camusienne : l'absurde. Ce roman met en scène un personnage indifférent à la société dans laquelle il vit, refusant de jouer le jeu et de mentir. Meursault, le personnage principal, refuse de simuler des sentiments et des émotions. Lorsqu'il se rend à l'enterrement de sa mère, il n'exprime ni tristesse ni chagrin."
-    },
-    {
-        id: 2,
-        title: 'Harry Potter et la pierre philosophale',
-        author: 'J.K. Rowling',
-        rating: 4.8,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Fantasy',
-        pages: 320,
-        year: 1997,
-        isbn: '978-2-07-054602-9',
-        language: 'Français',
-        publisher: 'Éditions Gallimard Jeunesse',
-        description:
-            "Le jour de ses onze ans, Harry Potter, un orphelin élevé par un oncle et une tante qui le détestent, voit son existence bouleversée. Un géant vient le chercher pour l'emmener à Poudlard, une école de sorcellerie! Voler en balai, jeter des sorts, combattre les trolls : Harry se révèle un sorcier doué. Mais un mystère entoure sa naissance et l'univers qu'il découvre est menacé par le retour de Voldemort, le mage noir dont personne ne doit prononcer le nom."
-    },
-    {
-        id: 3,
-        title: 'Le Petit Prince',
-        author: 'Antoine de Saint-Exupéry',
-        rating: 4.9,
-        coverUrl: '/api/placeholder/150/220',
-        available: false,
-        category: 'Conte philosophique',
-        pages: 96,
-        year: 1943,
-        isbn: '978-2-07-051328-4',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "Le narrateur, un aviateur, tombe en panne dans le désert du Sahara. Alors qu'il tente de réparer son avion, un petit garçon apparaît et lui demande de dessiner un mouton. Au fil des jours, le narrateur découvre l'histoire du Petit Prince qui vient d'une autre planète, l'astéroïde B 612, où il a laissé une rose. Avant d'arriver sur Terre, il a visité plusieurs autres planètes et rencontré des personnages symboliques. À travers ce conte poétique, Saint-Exupéry nous livre une réflexion profonde sur les relations humaines, l'amitié et le sens de la vie."
-    },
-    {
-        id: 4,
-        title: '1984',
-        author: 'George Orwell',
-        rating: 4.7,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Science-fiction',
-        pages: 328,
-        year: 1949,
-        isbn: '978-2-07-036822-8',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "Dans une Angleterre uchronique de 1984, le monde est divisé en trois grands blocs, constamment en guerre les uns contre les autres. À Londres, capitale de l'Océania, Winston Smith, employé au Commissariat aux Archives du Ministère de la Vérité, est chargé de réécrire l'Histoire. Dans cette société totalitaire dominée par Big Brother, la moindre pensée déviante est un crime. Mais Winston commence à tenir un journal intime, première étape d'une rébellion vouée à l'échec. Une dystopie glaçante sur les dérives du totalitarisme, qui n'a rien perdu de sa pertinence."
-    },
-    {
-        id: 5,
-        title: 'Les Misérables',
-        author: 'Victor Hugo',
-        rating: 4.6,
-        coverUrl: '/api/placeholder/150/220',
-        available: false,
-        category: 'Roman historique',
-        pages: 1900,
-        year: 1862,
-        isbn: '978-2-253-09634-8',
-        language: 'Français',
-        publisher: 'Le Livre de Poche',
-        description:
-            "Le destin de Jean Valjean, forçat libéré après dix-neuf ans de bagne pour avoir volé un pain, est au centre de ce roman monumental. Poursuivi par l'inspecteur Javert, il tentera de se racheter et deviendra tour à tour industriel, maire, puis père adoptif de Cosette. À travers cette fresque sociale et historique de la France du XIXe siècle, Victor Hugo dénonce la misère, l'ignorance et trace un tableau saisissant d'une époque troublée, des barricades de 1832 à la révolution de 1848."
-    },
-    {
-        id: 6,
-        title: 'Dune',
-        author: 'Frank Herbert',
-        rating: 4.7,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Science-fiction',
-        pages: 912,
-        year: 1965,
-        isbn: '978-2-221-50277-9',
-        language: 'Français',
-        publisher: 'Robert Laffont',
-        description:
-            "Sur la planète désertique Arrakis, aussi nommée Dune, le duc Leto Atréides reçoit en fief l'exploitation de l'épice, une substance aux propriétés uniques. Précieuse et convoitée, elle assure longévité et don de prescience. Mais l'attribution de ce fief est un piège tendu par l'empereur et les Harkonnens. Paul, fils du duc, échappe au massacre et se réfugie dans le désert avec sa mère. Recueilli par les Fremen, il deviendra leur chef religieux et conduira la révolte contre l'oppresseur. Chef-d'œuvre absolu de la science-fiction, Dune est un roman d'aventure, une réflexion politique et écologique."
-    },
-    {
-        id: 7,
-        title: 'Le Comte de Monte-Cristo',
-        author: 'Alexandre Dumas',
-        rating: 4.8,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: "Roman d'aventure",
-        pages: 1088,
-        year: 1844,
-        isbn: '978-2-253-09890-8',
-        language: 'Français',
-        publisher: 'Le Livre de Poche',
-        description:
-            "En 1815, Edmond Dantès, jeune marin de dix-neuf ans, débarque à Marseille pour y épouser sa fiancée Mercédès. Trois hommes jaloux de son bonheur, Danglars, Fernand et Caderousse, le dénoncent comme conspirateur bonapartiste. L'ambitieux procureur du roi, Villefort, le fait enfermer au château d'If. Après quatorze années de captivité, Dantès s'évade, découvre le trésor de l'île de Monte-Cristo et devient riche et puissant. Sous l'identité du comte de Monte-Cristo, il entreprend alors de se venger méthodiquement de ceux qui l'ont trahi."
-    },
-    // Livres additionnels pour enrichir les recommandations
-    {
-        id: 8,
-        title: 'La Peste',
-        author: 'Albert Camus',
-        rating: 4.6,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Roman philosophique',
-        pages: 336,
-        year: 1947,
-        isbn: '978-2-07-036042-0',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "Dans la ville d'Oran, soudain isolée du reste du monde par la peste et soumise à la loi impitoyable de la maladie, La Peste déroule le combat des hommes contre l'absurde, représenté ici sous la forme du fléau. C'est aussi une réflexion sur le mal et une référence à la montée des fascismes et à l'occupation allemande."
-    },
-    {
-        id: 9,
-        title: 'Le Mythe de Sisyphe',
-        author: 'Albert Camus',
-        rating: 4.4,
-        coverUrl: '/api/placeholder/150/220',
-        available: false,
-        category: 'Essai philosophique',
-        pages: 186,
-        year: 1942,
-        isbn: '978-2-07-032288-6',
-        language: 'Français',
-        publisher: 'Éditions Gallimard',
-        description:
-            "Dans cet essai philosophique, Camus développe sa philosophie de l'absurde. Il y présente le sentiment de l'absurdité de la condition humaine, examine les solutions proposées par d'autres philosophes et conclut par sa propre vision, où l'homme doit assumer l'absurde et se révolter contre lui."
-    },
-    {
-        id: 10,
-        title: 'Notre-Dame de Paris',
-        author: 'Victor Hugo',
-        rating: 4.5,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Roman historique',
-        pages: 624,
-        year: 1831,
-        isbn: '978-2-253-00340-6',
-        language: 'Français',
-        publisher: 'Le Livre de Poche',
-        description:
-            "En 1482, Quasimodo, le sonneur de cloches bossu de Notre-Dame, s'éprend de la belle bohémienne Esmeralda. Mais l'archidiacre Claude Frollo, qui a recueilli et élevé Quasimodo, est lui aussi amoureux de la jeune femme. À travers cette histoire tragique, Victor Hugo livre un vibrant plaidoyer en faveur de la protection du patrimoine architectural médiéval et met en scène tout un peuple dans le Paris du XVe siècle."
-    },
-    {
-        id: 11,
-        title: 'Harry Potter et la Chambre des Secrets',
-        author: 'J.K. Rowling',
-        rating: 4.7,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Fantasy',
-        pages: 368,
-        year: 1998,
-        isbn: '978-2-07-054603-6',
-        language: 'Français',
-        publisher: 'Éditions Gallimard Jeunesse',
-        description:
-            "Une rentrée fracassante en voiture volante, une étrange malédiction qui s'abat sur les élèves, cette deuxième année à l'école des sorciers ne s'annonce pas de tout repos! Entre les cours de potions magiques, les matches de Quidditch et les combats de mauvais sorts, Harry et ses amis Ron et Hermione trouveront-ils le temps de percer le mystère de la Chambre des Secrets?"
-    },
-    {
-        id: 12,
-        title: "Le Seigneur des Anneaux : La Communauté de l'Anneau",
-        author: 'J.R.R. Tolkien',
-        rating: 4.8,
-        coverUrl: '/api/placeholder/150/220',
-        available: true,
-        category: 'Fantasy',
-        pages: 704,
-        year: 1954,
-        isbn: '978-2-267-01901-7',
-        language: 'Français',
-        publisher: 'Christian Bourgois',
-        description:
-            "Dans ce premier tome de la trilogie, Frodon Sacquet hérite d'un anneau. Mais ce n'est pas un anneau ordinaire. C'est l'Anneau Unique, instrument de pouvoir absolu qui permettrait à Sauron, le Seigneur des ténèbres, de régner sur la Terre du Milieu. Frodon doit détruire l'Anneau en le jetant dans les flammes de la Montagne du Destin où il a été forgé."
-    }
-];
-
-// Variables aléatoires pour l'expérience utilisateur
-const randomReviewCount = ref(Math.floor(Math.random() * 500) + 50);
-const randomAvailableCount = ref(Math.floor(Math.random() * 5) + 1);
-const expectedReturnDate = ref(getRandomFutureDate());
 
 // Recherche du livre avec l'ID correspondant
 const book = ref(null);
@@ -910,7 +658,8 @@ onMounted(() => {
 });
 
 // Fonctions pour les actions utilisateurs
-const reserveBook = () => {
+// Fonctions pour les actions utilisateurs
+const reserveBook = async () => {
     if (!book.value?.available) {
         ElNotification({
             title: 'Non disponible',
@@ -930,12 +679,33 @@ const reserveBook = () => {
         return;
     }
 
-    ElNotification({
-        title: 'Réservation confirmée',
-        message: `Livre "${book.value.title}" réservé avec succès!`,
-        type: 'success',
-        duration: 5000
-    });
+    try {
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Envoyer la demande de réservation
+        await api.post('/reservation/books', { book_id: book.value.isbn });
+
+        // Mettre à jour l'état du livre localement
+        book.value.available = false;
+
+        ElNotification({
+            title: 'Réservation confirmée',
+            message: `Livre "${book.value.title}" réservé avec succès!`,
+            type: 'success',
+            duration: 5000
+        });
+    } catch (error) {
+        console.error('Erreur lors de la réservation:', error);
+
+        ElNotification({
+            title: 'Erreur',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la réservation.',
+            type: 'error'
+        });
+    }
 };
 
 const addToFavorites = () => {

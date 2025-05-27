@@ -292,14 +292,21 @@ const handleRegister = () => {
             };
 
             try {
+                // Importer le service API
+                const api = (await import('@/services/api')).default;
+
                 // Appel à l'API d'inscription
-                const response = userStore.register(apiData);
-                if (!response || !response.ok) {
-                    throw new Error("Erreur lors de l'inscription");
-                    console.log(response.json());
+                const result = await api.post('/register', apiData);
+
+                if (!result || !result.access_token) {
+                    throw new Error(
+                        "Erreur lors de l'inscription: pas de token reçu"
+                    );
                 }
 
-                const result = await response.json();
+                // Stocker automatiquement le token pour permettre une connexion immédiate
+                sessionStorage.setItem('auth_token', result.access_token);
+                sessionStorage.setItem('token_type', result.token_type);
 
                 // Afficher un message de succès
                 ElNotification({
@@ -329,7 +336,6 @@ const handleRegister = () => {
         }
     });
 };
-
 const switchToLogin = () => {
     emit('update:show', false);
     emit('switchToLogin');

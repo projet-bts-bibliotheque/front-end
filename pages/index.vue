@@ -34,27 +34,6 @@
 
             <NewsletterSection v-model:newsletterEmail="newsletterEmail" />
         </main>
-
-        <LoginModal
-            v-model:show="showLoginModal"
-            v-model:loginForm="loginForm"
-            @login="login"
-            @switchToRegister="showRegisterModal = true"
-            @switchToForgotPassword="showForgotPasswordModal = true"
-        />
-
-        <RegisterModal
-            v-model:show="showRegisterModal"
-            :registerForm="registerForm"
-            @register="handleRegister"
-            @switchToLogin="showLoginModal = true"
-        />
-
-        <ForgotPasswordModal
-            v-model:show="showForgotPasswordModal"
-            @switchToLogin="showLoginModal = true"
-            @resetPasswordRequest="handleResetPasswordRequest"
-        />
     </div>
 </template>
 
@@ -70,29 +49,51 @@ import FeaturesSection from '~/components/home/FeaturesSection.vue';
 import BookSlider from '~/components/home/BookSlider.vue';
 import StatsSection from '~/components/home/StatsSection.vue';
 import NewsletterSection from '~/components/home/NewsletterSection.vue';
-import LoginModal from '~/components/modals/LoginModal.vue';
-import RegisterModal from '~/components/modals/RegisterModal.vue';
-import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 
 // États UI pour les modales et les formulaires
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
-const showForgotPasswordModal = ref(false);
 const newsletterEmail = ref('');
-const loginForm = ref({
-    email: '',
-    password: ''
-});
+const rooms = ref([]);
 
-const registerForm = ref({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    address: '',
-    phone: '',
-    acceptTerms: false
-});
+async function loadRooms() {
+    isLoading.value = true;
+    try {
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Récupérer les salles depuis l'API
+        const roomsData = await api.get('/rooms');
+
+        // Transformer les données pour notre interface
+        rooms.value = roomsData.map((room) => ({
+            id: room.id,
+            name: room.name,
+            type: room.type || 'Standard', // Valeur par défaut si non spécifiée
+            capacity: room.places,
+            dimension: room.dimension || 0,
+            floor: room.floor || 'Étage non spécifié',
+            features: room.features || ['wifi'], // Par défaut, wifi disponible
+            popular: room.popular || false,
+            imageUrl: room.image_url || '/api/placeholder/400/250?text=Salle',
+            description: room.description || 'Aucune description disponible.'
+        }));
+    } catch (error) {
+        console.error('Erreur lors du chargement des salles:', error);
+
+        ElNotification({
+            title: 'Erreur',
+            message:
+                'Impossible de charger les salles. Veuillez réessayer plus tard.',
+            type: 'error'
+        });
+
+        // En cas d'erreur, utiliser un tableau vide
+        rooms.value = [];
+    } finally {
+        isLoading.value = false;
+    }
+}
 
 // Données de livres
 const sampleBooks = [
@@ -218,7 +219,8 @@ const visibleItems = ref(4);
  * Initialise les positions des sliders et configure les dimensions responsives
  * @returns {void}
  */
-onMounted(() => {
+onMounted(async () => {
+    await loadRooms();
     sliderPositions.value = categories.value.map(() => 0);
     maxPositions.value = categories.value.map(() => 0);
     updateItemWidth();
@@ -297,39 +299,6 @@ const slideRight = (categoryIndex) => {
 };
 
 /**
- * Gère l'action de connexion utilisateur et ferme la modal de connexion
- * @returns {void}
- */
-const login = () => {
-    showLoginModal.value = false;
-};
-
-/**
- * Traite une demande de réinitialisation de mot de passe
- * @param {string} email - Adresse email pour laquelle réinitialiser le mot de passe
- * @returns {void}
- */
-const handleResetPasswordRequest = (email) => {
-    console.log('Demande de réinitialisation du mot de passe pour:', email);
-    // Logique d'envoi d'email de réinitialisation...
-
-    ElNotification({
-        title: 'Email envoyé',
-        message:
-            'Un lien de réinitialisation a été envoyé à votre adresse email.',
-        type: 'success'
-    });
-};
-
-/**
- * Gère l'enregistrement d'un nouvel utilisateur et ferme la modal d'inscription
- * @returns {void}
- */
-const handleRegister = () => {
-    showRegisterModal.value = false;
-};
-
-/**
  * Gère la réservation d'un livre si celui-ci est disponible
  * @param {Object} book - Le livre à réserver
  * @returns {void}
@@ -343,6 +312,80 @@ const reserveBook = (book) => {
             type: 'success'
         });
     }
+};
+
+const handleReservation = async () => {
+    reservationFormRef.value.validate(async (valid) => {
+        if (valid) {
+            if (!reservationForm.value.acceptTerms) {
+                ElNotification({
+                    title: 'Conditions non acceptées',
+                    message:
+                        "Veuillez accepter les conditions d'utilisation pour continuer.",
+                    type: 'warning'
+                });
+                return;
+            }
+
+            try {
+                isSubmitting.value = true;
+
+                // Importer le service API
+                const api = (await import('@/services/api')).default;
+
+                // Préparer les données pour l'API
+                const reservationData = {
+                    room_id: selectedRoom.value.id,
+                    date:
+                        new Date(reservationForm.value.date)
+                            .toISOString()
+                            .split('T')[0] +
+                        ' ' +
+                        reservationForm.value.timeSlot.replace('-', ':')
+                };
+
+                // Envoyer la demande de réservation
+                await api.post('/reservation/rooms', reservationData);
+
+                // Générer un ID de réservation aléatoire (pour l'UI seulement, le vrai ID vient du backend)
+                reservationId.value = `RES-${Math.floor(Math.random() * 10000)
+                    .toString()
+                    .padStart(4, '0')}`;
+
+                // Fermer la modal de réservation et ouvrir la confirmation
+                showReservationModal.value = false;
+                showConfirmationModal.value = true;
+
+                // Réinitialiser le formulaire pour une prochaine réservation
+                reservationForm.value = {
+                    date: new Date(),
+                    timeSlot: '',
+                    participants: 1,
+                    purpose: '',
+                    comment: '',
+                    acceptTerms: false
+                };
+
+                ElNotification({
+                    title: 'Succès',
+                    message: 'Votre réservation a été enregistrée avec succès.',
+                    type: 'success'
+                });
+            } catch (error) {
+                console.error('Erreur lors de la réservation:', error);
+
+                ElNotification({
+                    title: 'Erreur',
+                    message:
+                        error.message ||
+                        'Une erreur est survenue lors de la réservation.',
+                    type: 'error'
+                });
+            } finally {
+                isSubmitting.value = false;
+            }
+        }
+    });
 };
 </script>
 

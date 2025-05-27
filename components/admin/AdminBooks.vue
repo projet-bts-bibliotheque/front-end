@@ -353,6 +353,8 @@ const categories = [
 
 // Données des livres
 const books = ref([]);
+const authors = ref([]);
+const editors = ref([]);
 
 // État du modal d'ajout/édition
 const bookModal = ref({
@@ -448,6 +450,75 @@ const filteredBooks = computed(() => {
     return result;
 });
 
+const loadBooks = async () => {
+    loading.value = true;
+    try {
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Récupérer les livres
+        const booksData = await api.get('/books');
+
+        // Récupérer les auteurs et éditeurs pour la présentation
+        const authorsData = await api.get('/authors');
+        const editorsData = await api.get('/editors');
+
+        // Stocker les listes d'auteurs et d'éditeurs pour le formulaire
+        authors.value = authorsData;
+        editors.value = editorsData;
+
+        // Vérifier quels livres sont actuellement empruntés
+        let borrowedBooks = [];
+        try {
+            const reservations = await api.get('/reservation/books');
+            borrowedBooks = reservations
+                .filter((r) => !r.return_date)
+                .map((r) => r.book_id);
+        } catch (error) {
+            console.warn('Impossible de récupérer les réservations:', error);
+        }
+
+        // Transformer les données pour notre interface
+        books.value = booksData.map((book) => {
+            const author = authorsData.find((a) => a.id === book.author);
+            const editor = editorsData.find((e) => e.id === book.editor);
+
+            return {
+                id: book.id,
+                title: book.title,
+                author: author
+                    ? `${author.firstname} ${author.lastname}`
+                    : 'Auteur inconnu',
+                authorId: book.author,
+                rating: book.average_rating || 0,
+                coverUrl: book.thumbnails || '/api/placeholder/150/220',
+                available: !borrowedBooks.includes(book.isbn),
+                category: book.category || 'non-catégorisé',
+                pages: book.pages || 0,
+                year: book.publish_year || 0,
+                isbn: book.isbn,
+                language: book.language || 'Français',
+                publisher: editor ? editor.name : 'Éditeur inconnu',
+                editorId: book.editor,
+                description: book.summary || ''
+            };
+        });
+    } catch (error) {
+        console.error('Erreur lors du chargement des livres:', error);
+        ElMessage({
+            type: 'error',
+            message: 'Impossible de charger les livres. Veuillez réessayer.'
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Charger les livres au montage du composant
+onMounted(async () => {
+    await loadBooks();
+});
+
 // Livres paginés
 const paginatedBooks = computed(() => {
     const startIndex = (currentPage.value - 1) * pageSize.value;
@@ -518,20 +589,39 @@ const handleCoverChange = (file) => {
     reader.readAsDataURL(file.raw);
 };
 
-const saveBook = () => {
+const saveBook = async () => {
     bookFormRef.value.validate(async (valid) => {
         if (valid) {
             bookModal.value.loading = true;
 
-            setTimeout(async () => {
+            try {
+                // Importer le service API
+                const api = (await import('@/services/api')).default;
+
+                // Préparer les données pour l'API
+                const bookData = {
+                    isbn: bookModal.value.form.isbn,
+                    title: bookModal.value.form.title,
+                    author: getAuthorIdByName(bookModal.value.form.author),
+                    editor: getEditorIdByName(bookModal.value.form.publisher),
+                    thumbnails: bookModal.value.form.coverUrl,
+                    average_rating: bookModal.value.form.rating || 0,
+                    ratings_count: 0,
+                    keyword: bookModal.value.form.category
+                        ? [bookModal.value.form.category]
+                        : [],
+                    summary: bookModal.value.form.description,
+                    publish_year: bookModal.value.form.year,
+                    pages: bookModal.value.form.pages,
+                    language: bookModal.value.form.language
+                };
+
                 if (bookModal.value.isEdit) {
                     // Mettre à jour le livre existant
-                    const index = books.value.findIndex(
-                        (book) => book.id === bookModal.value.form.id
+                    await api.put(
+                        `/books/${bookModal.value.form.isbn}`,
+                        bookData
                     );
-                    if (index !== -1) {
-                        books.value[index] = { ...bookModal.value.form };
-                    }
 
                     ElMessage({
                         type: 'success',
@@ -539,85 +629,89 @@ const saveBook = () => {
                     });
                 } else {
                     // Ajouter un nouveau livre
-                    const newBook = {
-                        ...bookModal.value.form,
-                        id:
-                            books.value.length > 0
-                                ? Math.max(
-                                      ...books.value.map((book) => book.id)
-                                  ) + 1
-                                : 1,
-                        rating: 0
-                    };
+                    await api.post('/books', bookData);
 
-                    try {
-                        const apiData = {
-                            ibsn: newBook.isbn,
-                            title: newBook.title,
-                            thumbnails: newBook.coverUrl,
-                            author: newBook.author,
-                            editor: newBook.publisher,
-                            averageRating: newBook.rating,
-                            ratingss_count: 0,
-                            keywoard: [newBook.category],
-                            summary: newBook.description,
-                            publish_year: newBook.year
-                        };
-
-                        const response = await fetch(
-                            'http://localhost:1234/api/books',
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(apiData)
-                            }
-                        );
-                        ElMessage({
-                            type: 'success',
-                            message: 'Livre ajouté avec succès'
-                        });
-                        const data = await response.json();
-                        console.log(data);
-                        const bookresponse = await fetch(
-                            `http://localhost:1234/api/books`
-                        );
-                        const bookdata = await bookresponse.json();
-                        console.log(bookdata);
-                        books.value = bookdata;
-                    } catch (error) {
-                        console.error(
-                            "Erreur lors de l'ajout du livre:",
-                            error
-                        );
-                        ElMessage({
-                            type: 'error',
-                            message: `Erreur lors de l'ajout du livre : ${error}`
-                        });
-                    }
+                    ElMessage({
+                        type: 'success',
+                        message: 'Livre ajouté avec succès'
+                    });
                 }
+
+                // Recharger les livres pour mettre à jour l'affichage
+                await loadBooks();
 
                 bookModal.value.loading = false;
                 bookModal.value.visible = false;
-            }, 1000);
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde du livre:', error);
+
+                ElMessage({
+                    type: 'error',
+                    message:
+                        error.message ||
+                        'Une erreur est survenue lors de la sauvegarde'
+                });
+
+                bookModal.value.loading = false;
+            }
         }
     });
 };
 
-const toggleBookAvailability = (book) => {
-    const updatedBook = { ...book, available: !book.available };
-    const index = books.value.findIndex((b) => b.id === book.id);
+const toggleBookAvailability = async (book) => {
+    try {
+        loading.value = true;
 
-    if (index !== -1) {
-        books.value[index] = updatedBook;
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        if (book.available) {
+            // Si le livre est disponible, nous le rendons indisponible en le réservant
+            await api.post('/reservation/books', { book_id: book.isbn });
+
+            ElMessage({
+                type: 'success',
+                message: `Le livre "${book.title}" est maintenant indisponible`
+            });
+        } else {
+            // Si le livre est indisponible, nous le rendons disponible en annulant la réservation
+            // Pour cela, il faudrait d'abord trouver la réservation active
+            const reservations = await api.get('/reservation/books');
+            const activeReservation = reservations.find(
+                (r) => r.book_id === book.isbn && !r.return_date
+            );
+
+            if (activeReservation) {
+                await api.post('/reservation/books/return', {
+                    book_id: book.isbn
+                });
+
+                ElMessage({
+                    type: 'success',
+                    message: `Le livre "${book.title}" est maintenant disponible`
+                });
+            } else {
+                ElMessage({
+                    type: 'warning',
+                    message: `Impossible de trouver une réservation active pour ce livre`
+                });
+            }
+        }
+
+        // Recharger les livres pour mettre à jour l'affichage
+        await loadBooks();
+    } catch (error) {
+        console.error(
+            'Erreur lors de la modification de la disponibilité:',
+            error
+        );
 
         ElMessage({
-            type: 'success',
-            message: `Le livre "${book.title}" est maintenant ${
-                updatedBook.available ? 'disponible' : 'indisponible'
-            }`
+            type: 'error',
+            message: error.message || 'Une erreur est survenue'
         });
+    } finally {
+        loading.value = false;
     }
 };
 
@@ -630,26 +724,86 @@ const confirmDeleteBook = (book) => {
     };
 };
 
-const deleteBook = () => {
-    confirmDialog.value.loading = true;
+const deleteBook = async () => {
+    try {
+        confirmDialog.value.loading = true;
 
-    setTimeout(() => {
-        const index = books.value.findIndex(
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Trouver l'ISBN du livre à supprimer
+        const bookToDelete = books.value.find(
             (book) => book.id === confirmDialog.value.bookId
         );
-
-        if (index !== -1) {
-            books.value.splice(index, 1);
-
-            ElMessage({
-                type: 'success',
-                message: 'Livre supprimé avec succès'
-            });
+        if (!bookToDelete) {
+            throw new Error('Livre introuvable');
         }
+
+        // Supprimer le livre en utilisant son ISBN
+        await api.delete(`/books/${bookToDelete.isbn}`);
+
+        // Recharger les livres pour mettre à jour l'affichage
+        await loadBooks();
+
+        ElMessage({
+            type: 'success',
+            message: 'Livre supprimé avec succès'
+        });
 
         confirmDialog.value.loading = false;
         confirmDialog.value.visible = false;
-    }, 800);
+    } catch (error) {
+        console.error('Erreur lors de la suppression du livre:', error);
+
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la suppression'
+        });
+
+        confirmDialog.value.loading = false;
+    }
+};
+
+// Fonction utilitaire pour obtenir l'ID d'un auteur à partir de son nom complet
+const getAuthorIdByName = (fullName) => {
+    if (!fullName || !authors.value || authors.value.length === 0) return null;
+
+    // Séparer le nom complet en prénom et nom
+    const parts = fullName.split(' ');
+    let firstName = '';
+    let lastName = '';
+
+    if (parts.length >= 2) {
+        // Dans un cas simple, le premier élément est le prénom, le reste est le nom
+        firstName = parts[0];
+        lastName = parts.slice(1).join(' ');
+    } else {
+        // Si un seul mot, considérer comme nom de famille
+        lastName = fullName;
+    }
+
+    // Rechercher l'auteur qui correspond le mieux
+    const author = authors.value.find(
+        (a) =>
+            (a.firstname.toLowerCase() === firstName.toLowerCase() ||
+                firstName === '') &&
+            a.lastname.toLowerCase() === lastName.toLowerCase()
+    );
+
+    return author ? author.id : null;
+};
+
+// Fonction utilitaire pour obtenir l'ID d'un éditeur à partir de son nom
+const getEditorIdByName = (name) => {
+    if (!name || !editors.value || editors.value.length === 0) return null;
+
+    const editor = editors.value.find(
+        (e) => e.name.toLowerCase() === name.toLowerCase()
+    );
+
+    return editor ? editor.id : null;
 };
 </script>
 

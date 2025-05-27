@@ -175,14 +175,31 @@ const handleLogin = async () => {
 
         isLoading.value = true;
 
-        // Appel au store pour l'authentification
-        const data = await usersStore.login(formData.email, formData.password);
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
 
-        // Récupérer les données utilisateur
-        await usersStore.fetchUserData();
+        // Appel à l'API d'authentification
+        const authData = await api.post('/login', {
+            email: formData.email,
+            password: formData.password
+        });
+
+        if (!authData || !authData.access_token) {
+            throw new Error(
+                "Erreur de connexion: données d'authentification invalides"
+            );
+        }
+
+        // Stocker le token dans le localStorage ou sessionStorage selon l'option "se souvenir de moi"
+        const storage = rememberMe.value ? localStorage : sessionStorage;
+        storage.setItem('auth_token', authData.access_token);
+        storage.setItem('token_type', authData.token_type);
+
+        // Récupérer les informations de l'utilisateur connecté
+        const userData = await api.get('/me');
 
         // Émettre l'événement de connexion pour informer le composant parent
-        emit('login', usersStore.user);
+        emit('login', userData);
 
         // Afficher une notification de succès
         ElNotification({

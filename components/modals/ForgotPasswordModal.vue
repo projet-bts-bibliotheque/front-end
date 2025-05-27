@@ -106,24 +106,50 @@ const rules = {
         }
     ]
 };
-
-const handleSubmit = () => {
-    forgotPasswordForm.value.validate((valid) => {
+const handleSubmit = async () => {
+    forgotPasswordForm.value.validate(async (valid) => {
         if (valid) {
             isLoading.value = true;
-            // Simuler un délai de traitement
-            setTimeout(() => {
-                isLoading.value = false;
+
+            try {
+                // Importer le service API
+                const api = (await import('@/services/api')).default;
+
+                // Appel à l'API pour la réinitialisation du mot de passe
+                await api.post('/forgot-password', { email: formData.email });
+
                 // Émettre un événement pour indiquer que la demande a été envoyée
                 emit('resetPasswordRequest', formData.email);
-                // Afficher une notification ou message de succès (à implémenter selon votre interface)
+
+                // Afficher une notification de succès
+                ElNotification({
+                    title: 'Email envoyé',
+                    message:
+                        'Un lien de réinitialisation de mot de passe a été envoyé à votre adresse email.',
+                    type: 'success'
+                });
+
                 // Fermer la modal
                 emit('update:show', false);
-            }, 1500);
+            } catch (error) {
+                // Afficher une notification d'erreur
+                ElNotification({
+                    title: 'Erreur',
+                    message:
+                        error.message ||
+                        "Une erreur est survenue lors de l'envoi de l'email de réinitialisation",
+                    type: 'error'
+                });
+                console.error(
+                    'Erreur de réinitialisation de mot de passe:',
+                    error
+                );
+            } finally {
+                isLoading.value = false;
+            }
         }
     });
 };
-
 const switchToLogin = () => {
     emit('update:show', false);
     emit('switchToLogin');

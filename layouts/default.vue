@@ -82,38 +82,66 @@ const currentUser = ref({
 });
 
 // Vérifier l'état de connexion au chargement
-onMounted(() => {
-    checkLoginStatus();
+onMounted(async () => {
+    await checkLoginStatus();
 });
 
 // Vérifier si l'utilisateur est connecté en vérifiant le localStorage ou sessionStorage
-const checkLoginStatus = () => {
+const checkLoginStatus = async () => {
+    // Ne vérifier que côté client pour éviter les erreurs SSR
+    if (!process.client) {
+        return;
+    }
+
     const token =
         localStorage.getItem('auth_token') ||
         sessionStorage.getItem('auth_token');
 
     if (token) {
-        // Dans une application réelle, vous pourriez faire une requête API pour
-        // récupérer les informations de l'utilisateur avec le token
-        // Ici, nous allons simuler un utilisateur connecté avec des données fictives
-        isLoggedIn.value = true;
-        currentUser.value = {
-            id: usersStore.userId,
-            firstName: usersStore.firstName,
-            lastName: usersStore.lastName,
-            email: usersStore.email
-        };
+        try {
+            // Importer le service API
+            const api = (await import('@/services/api')).default;
+
+            // Récupérer les informations de l'utilisateur avec le token
+            const userData = await api.get('/me');
+
+            isLoggedIn.value = true;
+            currentUser.value = {
+                id: userData.id,
+                firstName: userData.first_name,
+                lastName: userData.last_name,
+                email: userData.email,
+                role: userData.role
+            };
+        } catch (error) {
+            console.error(
+                'Erreur lors de la récupération des informations utilisateur:',
+                error
+            );
+            // Si erreur d'authentification, supprimer le token
+            localStorage.removeItem('auth_token');
+            sessionStorage.removeItem('auth_token');
+
+            isLoggedIn.value = false;
+            currentUser.value = {
+                id: null,
+                firstName: '',
+                lastName: '',
+                email: '',
+                role: 0
+            };
+        }
     } else {
         isLoggedIn.value = false;
         currentUser.value = {
             id: null,
             firstName: '',
             lastName: '',
-            email: ''
+            email: '',
+            role: 0
         };
     }
 };
-
 // Sample books data for search autocomplete
 const sampleBooks = [
     {
@@ -222,25 +250,50 @@ const handleRegister = (userData) => {
  * Gère la déconnexion de l'utilisateur
  * @returns {void}
  */
-const handleLogout = () => {
-    // Supprimer le token d'authentification
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('auth_token');
+const handleLogout = async () => {
+    try {
+        // On pourrait ajouter un appel API pour invalider le token côté serveur
+        // mais ce n'est pas strictement nécessaire avec Laravel Sanctum
 
-    // Réinitialiser l'état de connexion
-    isLoggedIn.value = false;
-    currentUser.value = {
-        id: null,
-        firstName: '',
-        lastName: '',
-        email: ''
-    };
+        // Supprimer le token d'authentification seulement côté client
+        if (process.client) {
+            localStorage.removeItem('auth_token');
+            sessionStorage.removeItem('auth_token');
+        }
 
-    ElNotification({
-        title: 'Déconnecté',
-        message: 'Vous avez été déconnecté avec succès.',
-        type: 'success'
-    });
+        // Réinitialiser l'état de connexion
+        isLoggedIn.value = false;
+        currentUser.value = {
+            id: null,
+            firstName: '',
+            lastName: '',
+            email: '',
+            role: 0
+        };
+
+        ElNotification({
+            title: 'Déconnecté',
+            message: 'Vous avez été déconnecté avec succès.',
+            type: 'success'
+        });
+
+        // Rediriger vers la page d'accueil si nous sommes dans une zone protégée
+        const route = useRoute();
+        if (
+            route.path.startsWith('/admin') ||
+            route.path.startsWith('/profile')
+        ) {
+            navigateTo('/');
+        }
+    } catch (error) {
+        console.error('Erreur lors de la déconnexion:', error);
+
+        ElNotification({
+            title: 'Erreur',
+            message: 'Une erreur est survenue lors de la déconnexion.',
+            type: 'error'
+        });
+    }
 };
 
 /**

@@ -327,74 +327,7 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 
 // Données des utilisateurs
-const users = ref([
-    {
-        id: 1,
-        name: 'Admin Test',
-        firstName: 'Admin',
-        lastName: 'Test',
-        email: 'admin@bibliotheque.fr',
-        phone: '01 23 45 67 89',
-        address: '123 Rue de la Bibliothèque, 75001 Paris',
-        role: 'admin',
-        status: 'active',
-        avatar: '/api/placeholder/100/100?text=Admin',
-        memberSince: '01/01/2023'
-    },
-    {
-        id: 2,
-        name: 'Sophie Moreau',
-        firstName: 'Sophie',
-        lastName: 'Moreau',
-        email: 'sophie.moreau@email.com',
-        phone: '01 23 45 67 90',
-        address: '456 Avenue des Livres, 75002 Paris',
-        role: 'librarian',
-        status: 'active',
-        avatar: '/api/placeholder/100/100?text=SM',
-        memberSince: '15/03/2023'
-    },
-    {
-        id: 3,
-        name: 'Thomas Laurent',
-        firstName: 'Thomas',
-        lastName: 'Laurent',
-        email: 'thomas.laurent@email.com',
-        phone: '01 23 45 67 91',
-        address: '789 Boulevard de la Lecture, 75003 Paris',
-        role: 'member',
-        status: 'active',
-        avatar: '/api/placeholder/100/100?text=TL',
-        memberSince: '27/05/2023'
-    },
-    {
-        id: 4,
-        name: 'Marie Martin',
-        firstName: 'Marie',
-        lastName: 'Martin',
-        email: 'marie.martin@email.com',
-        phone: '01 23 45 67 92',
-        address: '101 Rue des Romans, 75004 Paris',
-        role: 'member',
-        status: 'active',
-        avatar: '/api/placeholder/100/100?text=MM',
-        memberSince: '10/07/2023'
-    },
-    {
-        id: 5,
-        name: 'Paul Dupont',
-        firstName: 'Paul',
-        lastName: 'Dupont',
-        email: 'paul.dupont@email.com',
-        phone: '01 23 45 67 93',
-        address: '202 Avenue des Écrivains, 75005 Paris',
-        role: 'member',
-        status: 'suspended',
-        avatar: '/api/placeholder/100/100?text=PD',
-        memberSince: '05/09/2023'
-    }
-]);
-
+const users = ref([]);
 // État du modal d'ajout/édition
 const userModal = ref({
     visible: false,
@@ -486,6 +419,48 @@ const userValidationRules = {
         }
     ]
 };
+
+const loadUsers = async () => {
+    loading.value = true;
+    try {
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Récupérer les utilisateurs
+        const userData = await api.get('/users');
+
+        // Transformer les données pour notre interface
+        users.value = userData.map((user) => ({
+            id: user.id,
+            name: `${user.first_name} ${user.last_name}`,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            email: user.email,
+            phone: user.phone,
+            address: user.address,
+            role: user.role,
+            status: user.status || 'active',
+            avatar: `/api/placeholder/100/100?text=${user.first_name.charAt(
+                0
+            )}${user.last_name.charAt(0)}`,
+            memberSince: new Date(user.created_at).toLocaleDateString('fr-FR')
+        }));
+    } catch (error) {
+        console.error('Erreur lors du chargement des utilisateurs:', error);
+        ElMessage({
+            type: 'error',
+            message:
+                'Impossible de charger les utilisateurs. Veuillez réessayer.'
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Charger les utilisateurs au montage du composant
+onMounted(async () => {
+    await loadUsers();
+});
 
 // Utilisateurs filtrés selon les critères de recherche
 const filteredUsers = computed(() => {
@@ -601,65 +576,56 @@ const closeUserModal = () => {
     userModal.value.visible = false;
 };
 
-const saveUser = () => {
-    userFormRef.value.validate((valid) => {
+const saveUser = async () => {
+    userFormRef.value.validate(async (valid) => {
         if (valid) {
             userModal.value.loading = true;
 
-            setTimeout(() => {
+            try {
+                // Importer le service API
+                const api = (await import('@/services/api')).default;
+
                 if (userModal.value.isEdit) {
-                    // Mettre à jour l'utilisateur existant
-                    const index = users.value.findIndex(
-                        (user) => user.id === userModal.value.form.id
-                    );
-                    if (index !== -1) {
-                        const updatedUser = {
-                            ...users.value[index],
-                            firstName: userModal.value.form.firstName,
-                            lastName: userModal.value.form.lastName,
-                            name: `${userModal.value.form.firstName} ${userModal.value.form.lastName}`,
-                            email: userModal.value.form.email,
-                            phone: userModal.value.form.phone,
-                            address: userModal.value.form.address,
-                            role: userModal.value.form.role,
-                            status: userModal.value.form.isActive
-                                ? 'active'
-                                : 'suspended'
-                        };
-
-                        users.value[index] = updatedUser;
-
-                        ElMessage({
-                            type: 'success',
-                            message: 'Utilisateur mis à jour avec succès'
-                        });
-                    }
-                } else {
-                    // Ajouter un nouvel utilisateur
-                    const newUser = {
-                        id:
-                            users.value.length > 0
-                                ? Math.max(
-                                      ...users.value.map((user) => user.id)
-                                  ) + 1
-                                : 1,
-                        firstName: userModal.value.form.firstName,
-                        lastName: userModal.value.form.lastName,
-                        name: `${userModal.value.form.firstName} ${userModal.value.form.lastName}`,
+                    // Préparer les données pour l'API
+                    const userData = {
+                        first_name: userModal.value.form.firstName,
+                        last_name: userModal.value.form.lastName,
                         email: userModal.value.form.email,
-                        phone: userModal.value.form.phone,
                         address: userModal.value.form.address,
-                        role: userModal.value.form.role,
-                        status: userModal.value.form.isActive
-                            ? 'active'
-                            : 'suspended',
-                        avatar: `/api/placeholder/100/100?text=${userModal.value.form.firstName.charAt(
-                            0
-                        )}${userModal.value.form.lastName.charAt(0)}`,
-                        memberSince: new Date().toLocaleDateString('fr-FR')
+                        phone: userModal.value.form.phone,
+                        role: userModal.value.form.role
                     };
 
-                    users.value.push(newUser);
+                    // Mettre à jour l'utilisateur existant
+                    await api.put(
+                        `/users/${userModal.value.form.id}`,
+                        userData
+                    );
+
+                    // Mettre à jour l'affichage
+                    await loadUsers();
+
+                    ElMessage({
+                        type: 'success',
+                        message: 'Utilisateur mis à jour avec succès'
+                    });
+                } else {
+                    // Préparer les données pour l'API
+                    const userData = {
+                        first_name: userModal.value.form.firstName,
+                        last_name: userModal.value.form.lastName,
+                        email: userModal.value.form.email,
+                        password: userModal.value.form.password,
+                        address: userModal.value.form.address,
+                        phone: userModal.value.form.phone,
+                        role: userModal.value.form.role
+                    };
+
+                    // Ajouter un nouvel utilisateur
+                    await api.post('/register', userData);
+
+                    // Mettre à jour l'affichage
+                    await loadUsers();
 
                     ElMessage({
                         type: 'success',
@@ -667,27 +633,101 @@ const saveUser = () => {
                     });
                 }
 
-                userModal.value.loading = false;
                 userModal.value.visible = false;
-            }, 1000);
+            } catch (error) {
+                console.error(
+                    "Erreur lors de la sauvegarde de l'utilisateur:",
+                    error
+                );
+
+                ElMessage({
+                    type: 'error',
+                    message:
+                        error.message ||
+                        'Une erreur est survenue lors de la sauvegarde'
+                });
+            } finally {
+                userModal.value.loading = false;
+            }
         }
     });
 };
 
-const toggleUserStatus = (user) => {
-    const newStatus = user.status === 'active' ? 'suspended' : 'active';
-    const index = users.value.findIndex((u) => u.id === user.id);
+const toggleUserStatus = async (user) => {
+    try {
+        loading.value = true;
 
-    if (index !== -1) {
-        const updatedUser = { ...users.value[index], status: newStatus };
-        users.value[index] = updatedUser;
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Dans un système réel, vous auriez probablement un endpoint spécifique pour changer le statut
+        // Ici, nous utilisons le même endpoint de mise à jour
+        const userData = {
+            first_name: user.firstName,
+            last_name: user.lastName,
+            email: user.email,
+            address: user.address,
+            phone: user.phone,
+            role: user.role,
+            status: user.status === 'active' ? 'suspended' : 'active'
+        };
+
+        await api.put(`/users/${user.id}`, userData);
+
+        // Mettre à jour l'affichage
+        await loadUsers();
 
         ElMessage({
             type: 'success',
-            message: `Utilisateur ${updatedUser.name} ${
-                newStatus === 'active' ? 'activé' : 'suspendu'
+            message: `Utilisateur ${user.name} ${
+                user.status === 'active' ? 'suspendu' : 'activé'
             } avec succès`
         });
+    } catch (error) {
+        console.error('Erreur lors du changement de statut:', error);
+
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Une erreur est survenue lors du changement de statut'
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+const deleteUser = async () => {
+    try {
+        confirmDialog.value.loading = true;
+
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Supprimer l'utilisateur
+        await api.delete(`/users/${confirmDialog.value.userId}`);
+
+        // Mettre à jour l'affichage
+        await loadUsers();
+
+        ElMessage({
+            type: 'success',
+            message: 'Utilisateur supprimé avec succès'
+        });
+
+        confirmDialog.value.loading = false;
+        confirmDialog.value.visible = false;
+    } catch (error) {
+        console.error("Erreur lors de la suppression de l'utilisateur:", error);
+
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la suppression'
+        });
+
+        confirmDialog.value.loading = false;
     }
 };
 
@@ -716,28 +756,6 @@ const confirmDeleteUser = (user) => {
         userId: user.id,
         loading: false
     };
-};
-
-const deleteUser = () => {
-    confirmDialog.value.loading = true;
-
-    setTimeout(() => {
-        const index = users.value.findIndex(
-            (user) => user.id === confirmDialog.value.userId
-        );
-
-        if (index !== -1) {
-            users.value.splice(index, 1);
-
-            ElMessage({
-                type: 'success',
-                message: 'Utilisateur supprimé avec succès'
-            });
-        }
-
-        confirmDialog.value.loading = false;
-        confirmDialog.value.visible = false;
-    }, 800);
 };
 </script>
 

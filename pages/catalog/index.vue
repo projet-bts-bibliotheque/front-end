@@ -183,7 +183,7 @@
                             <NuxtLink
                                 v-for="book in displayedBooks"
                                 :key="book.id"
-                                :to="`/book/${book.id}`"
+                                :to="`/book/${book.isbn}`"
                                 class="book-card"
                                 :class="{ 'list-card': viewMode === 'list' }"
                             >
@@ -365,28 +365,7 @@ const categoriesList = [
 ];
 
 // Liste des auteurs pour la recherche avancée
-const authorsList = [
-    'Victor Hugo',
-    'Albert Camus',
-    'J.K. Rowling',
-    'George Orwell',
-    'Antoine de Saint-Exupéry',
-    'Émile Zola',
-    'Simone de Beauvoir',
-    'Haruki Murakami',
-    'Stephen King',
-    'Marguerite Duras',
-    'Marcel Proust',
-    'Frantz Fanon',
-    'Milan Kundera',
-    'Agatha Christie',
-    'Virginia Woolf',
-    'Franz Kafka',
-    'Gabriel García Márquez',
-    'Aldous Huxley',
-    'Fyodor Dostoevsky',
-    'Jane Austen'
-];
+const authorsList = ref([]);
 
 // Options de tri
 const sortOptions = [
@@ -406,148 +385,71 @@ const yearMarks = {
     2025: '2025'
 };
 
-// Données de livres (simulées pour l'exemple)
+// Données de livres
 const allBooks = ref([]);
 
-// Générer plus de livres pour le catalogue
-onMounted(() => {
-    generateSampleBooks();
-    setTimeout(() => {
+// Chargement des livres depuis l'API
+onMounted(async () => {
+    isLoading.value = true;
+    try {
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Récupérer les livres depuis l'API
+        const books = await api.get('/books');
+
+        // Récupérer également les auteurs pour combiner les informations
+        const authors = await api.get('/authors');
+        authorsList.value = authors.map(
+            (author) => `${author.firstname} ${author.lastname}`
+        );
+
+        // Transformer les données pour correspondre à notre structure frontend
+        allBooks.value = books.map((book) => ({
+            id: book.id || book.isbn,
+            title: book.title,
+            author: getAuthorName(book.author, authors),
+            rating: book.average_rating || 0,
+            coverUrl: book.thumbnails || '/api/placeholder/150/220',
+            available: !getIsBookBorrowed(book.isbn), // À implémenter avec les réservations
+            category: book.category || 'non-catégorisé',
+            pages: book.pages || 0,
+            year: book.publish_year || 0,
+            isbn: book.isbn,
+            description: book.summary || ''
+        }));
+    } catch (error) {
+        console.error('Erreur lors du chargement des livres:', error);
+        ElNotification({
+            title: 'Erreur',
+            message:
+                'Impossible de charger les livres. Veuillez réessayer plus tard.',
+            type: 'error'
+        });
+
+        // En cas d'erreur, utiliser des données de test pour ne pas bloquer l'interface
+        allBooks.value = [];
+    } finally {
         isLoading.value = false;
-    }, 1000);
+    }
 });
 
-// Fonction pour générer un ensemble de livres d'exemple plus vaste
-const generateSampleBooks = () => {
-    const baseSampleBooks = [
-        {
-            id: 1,
-            title: "L'Étranger",
-            author: 'Albert Camus',
-            rating: 4.5,
-            coverUrl: '/api/placeholder/150/220',
-            available: true,
-            category: 'roman',
-            pages: 185,
-            year: 1942,
-            isbn: '978-2-07-036002-4',
-            description:
-                "L'Étranger est un roman d'Albert Camus, publié en 1942. Il prend place dans la tétralogie que Camus nommera « cycle de l'absurde » qui décrit les fondements de la philosophie camusienne : l'absurde."
-        },
-        {
-            id: 2,
-            title: 'Harry Potter et la pierre philosophale',
-            author: 'J.K. Rowling',
-            rating: 4.8,
-            coverUrl: '/api/placeholder/150/220',
-            available: true,
-            category: 'fantasy',
-            pages: 320,
-            year: 1997,
-            isbn: '978-2-07-054602-9',
-            description:
-                "Le jour de ses onze ans, Harry Potter, un orphelin élevé par un oncle et une tante qui le détestent, voit son existence bouleversée. Un géant vient le chercher pour l'emmener à Poudlard, la célèbre école de sorcellerie où une place l'attend depuis toujours."
-        },
-        {
-            id: 3,
-            title: 'Le Petit Prince',
-            author: 'Antoine de Saint-Exupéry',
-            rating: 4.9,
-            coverUrl: '/api/placeholder/150/220',
-            available: false,
-            category: 'roman',
-            pages: 96,
-            year: 1943,
-            isbn: '978-2-07-051328-4',
-            description:
-                "Un pilote d'avion, contraint d'atterrir dans le désert du Sahara à la suite d'une panne de moteur, fait la rencontre d'un enfant venu des étoiles. Ce dernier lui raconte son voyage de planète en planète et sa découverte de l'étrange comportement des grandes personnes."
-        },
-        {
-            id: 4,
-            title: '1984',
-            author: 'George Orwell',
-            rating: 4.7,
-            coverUrl: '/api/placeholder/150/220',
-            available: true,
-            category: 'science-fiction',
-            pages: 328,
-            year: 1949,
-            isbn: '978-2-07-036822-8',
-            description:
-                "Dans une société totalitaire où le gouvernement, dirigé par Big Brother, contrôle jusqu'aux pensées des individus, Winston Smith, employé du Ministère de la Vérité, falsifie l'histoire en réécrivant les archives."
-        },
-        {
-            id: 5,
-            title: 'Les Misérables',
-            author: 'Victor Hugo',
-            rating: 4.6,
-            coverUrl: '/api/placeholder/150/220',
-            available: false,
-            category: 'roman',
-            pages: 1900,
-            year: 1862,
-            isbn: '978-2-253-09634-8',
-            description:
-                "Les Misérables est un roman de Victor Hugo paru en 1862. Il décrit la vie de pauvres gens dans Paris et la France provinciale du XIXe siècle, l'auteur s'attachant plus particulièrement au destin du bagnard Jean Valjean."
-        }
-    ];
-
-    const categories = [
-        'roman',
-        'science-fiction',
-        'fantasy',
-        'policier',
-        'biographie',
-        'histoire',
-        'philosophie',
-        'art',
-        'sciences',
-        'informatique'
-    ];
-    const authors = authorsList;
-
-    const getRandomRating = () => {
-        const ratings = [3, 3.5, 4, 4.2, 4.5, 4.7, 4.8, 5];
-        return ratings[Math.floor(Math.random() * ratings.length)];
-    };
-
-    const getRandomYear = () =>
-        Math.floor(Math.random() * (2025 - 1900) + 1900);
-    const getRandomPages = () => Math.floor(Math.random() * (1000 - 100) + 100);
-    const getRandomAvailability = () => Math.random() > 0.3;
-
-    // Ajouter les livres de base
-    allBooks.value = [...baseSampleBooks];
-
-    // Générer 120 livres aléatoires supplémentaires
-    for (let i = 6; i <= 120; i++) {
-        const randomCategory =
-            categories[Math.floor(Math.random() * categories.length)];
-        const randomAuthor =
-            authors[Math.floor(Math.random() * authors.length)];
-        const year = getRandomYear();
-
-        allBooks.value.push({
-            id: i,
-            title: `Livre ${i} - ${
-                randomCategory.charAt(0).toUpperCase() + randomCategory.slice(1)
-            }`,
-            author: randomAuthor,
-            rating: getRandomRating(),
-            coverUrl: `/api/placeholder/150/220?text=Livre${i}`,
-            available: getRandomAvailability(),
-            category: randomCategory,
-            pages: getRandomPages(),
-            year: year,
-            isbn: `978-2-${Math.floor(Math.random() * 90 + 10)}-${Math.floor(
-                Math.random() * 90000 + 10000
-            )}-${Math.floor(Math.random() * 9)}`,
-            description: `Description du livre ${i}. Un ouvrage passionnant de ${randomAuthor} publié en ${year}.`
-        });
-    }
+// Fonction pour déterminer si un livre est emprunté
+// Ceci est une implémentation temporaire - à remplacer par des données réelles
+const getIsBookBorrowed = (isbn) => {
+    // Dans une implémentation réelle, on vérifierait si ce livre a une réservation active
+    return Math.random() > 0.7; // 30% des livres seront marqués comme non disponibles
 };
 
-// Filtrage des livres en fonction des critères sélectionnés
+// Fonction pour obtenir le nom de l'auteur à partir de son ID
+const getAuthorName = (authorId, authors) => {
+    if (!authors || !authorId) return 'Auteur inconnu';
+
+    const author = authors.find((a) => a.id === authorId);
+    return author ? `${author.firstname} ${author.lastname}` : 'Auteur inconnu';
+};
+
+// Livres filtrés selon les critères de recherche
 const filteredBooks = computed(() => {
     let result = [...allBooks.value];
 
@@ -712,13 +614,58 @@ const resetSearch = () => {
 };
 
 // Réserver un livre
-const reserveBook = (book) => {
-    if (book.available) {
+const reserveBook = async (book) => {
+    if (!book.available) {
+        ElNotification({
+            title: 'Non disponible',
+            message: "Ce livre n'est pas disponible actuellement.",
+            type: 'warning'
+        });
+        return;
+    }
+
+    // Vérifier si l'utilisateur est connecté
+    if (!isLoggedIn.value) {
+        showLoginModal.value = true;
+        ElNotification({
+            title: 'Connexion requise',
+            message: 'Veuillez vous connecter pour réserver un livre.',
+            type: 'info'
+        });
+        return;
+    }
+
+    try {
+        isLoading.value = true;
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Envoyer la demande de réservation
+        await api.post('/reservation/books', { book_id: book.isbn });
+
+        // Mettre à jour l'état du livre en local pour refléter la réservation
+        const index = allBooks.value.findIndex((b) => b.isbn === book.isbn);
+        if (index !== -1) {
+            allBooks.value[index].available = false;
+        }
+
         ElNotification({
             title: 'Réservation confirmée',
             message: `Livre "${book.title}" réservé avec succès!`,
             type: 'success'
         });
+    } catch (error) {
+        console.error('Erreur lors de la réservation du livre:', error);
+
+        ElNotification({
+            title: 'Erreur',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la réservation.',
+            type: 'error'
+        });
+    } finally {
+        isLoading.value = false;
     }
 };
 
@@ -735,7 +682,7 @@ const handleRegister = () => {
 // Gestion de la réinitialisation du mot de passe
 const handleResetPasswordRequest = (email) => {
     ElNotification({
-        title: `email envoyé à ${email}`,
+        title: `Email envoyé à ${email}`,
         message:
             'Un lien de réinitialisation a été envoyé à votre adresse email.',
         type: 'success'
