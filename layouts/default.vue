@@ -143,33 +143,7 @@ const checkLoginStatus = async () => {
     }
 };
 // Sample books data for search autocomplete
-const sampleBooks = [
-    {
-        id: 1,
-        title: "L'Étranger",
-        author: 'Albert Camus',
-        rating: 4.5,
-        coverUrl: '/api/placeholder/150/220',
-        available: true
-    },
-    {
-        id: 2,
-        title: 'Harry Potter et la pierre philosophale',
-        author: 'J.K. Rowling',
-        rating: 4.8,
-        coverUrl: '/api/placeholder/150/220',
-        available: true
-    },
-    {
-        id: 3,
-        title: 'Le Petit Prince',
-        author: 'Antoine de Saint-Exupéry',
-        rating: 4.9,
-        coverUrl: '/api/placeholder/150/220',
-        available: false
-    }
-    // Add more books as needed
-];
+const sampleBooks = [{}];
 
 /**
  * Effectue une recherche de livres en fonction d'une chaîne de requête

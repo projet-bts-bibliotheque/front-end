@@ -300,43 +300,7 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 
 // Données des livres (pour la recherche)
-const books = ref([
-    {
-        id: 1,
-        title: "L'Étranger",
-        author: 'Albert Camus',
-        coverUrl: '/api/placeholder/150/220',
-        available: true
-    },
-    {
-        id: 2,
-        title: 'Harry Potter et la pierre philosophale',
-        author: 'J.K. Rowling',
-        coverUrl: '/api/placeholder/150/220',
-        available: true
-    },
-    {
-        id: 3,
-        title: 'Le Petit Prince',
-        author: 'Antoine de Saint-Exupéry',
-        coverUrl: '/api/placeholder/150/220',
-        available: false
-    },
-    {
-        id: 4,
-        title: '1984',
-        author: 'George Orwell',
-        coverUrl: '/api/placeholder/150/220',
-        available: true
-    },
-    {
-        id: 5,
-        title: 'Les Misérables',
-        author: 'Victor Hugo',
-        coverUrl: '/api/placeholder/150/220',
-        available: false
-    }
-]);
+const books = ref([{}]);
 
 // Données des utilisateurs (pour la recherche)
 const users = ref([
@@ -368,42 +332,7 @@ const users = ref([
 ]);
 
 // Données des emprunts
-const borrows = ref([
-    {
-        id: 1,
-        bookId: 3,
-        bookTitle: 'Le Petit Prince',
-        userId: 3,
-        userName: 'Thomas Laurent',
-        borrowDate: '05/04/2025',
-        dueDate: '19/04/2025',
-        status: 'active',
-        notes: ''
-    },
-    {
-        id: 2,
-        bookId: 4,
-        bookTitle: '1984',
-        userId: 4,
-        userName: 'Marie Martin',
-        borrowDate: '01/04/2025',
-        dueDate: '15/04/2025',
-        status: 'returned',
-        returnDate: '08/04/2025',
-        notes: ''
-    },
-    {
-        id: 3,
-        bookId: 5,
-        bookTitle: 'Les Misérables',
-        userId: 5,
-        userName: 'Paul Dupont',
-        borrowDate: '15/03/2025',
-        dueDate: '29/03/2025',
-        status: 'late',
-        notes: 'A été contacté le 01/04/2025 pour rappel'
-    }
-]);
+const borrows = ref([{}]);
 
 // État du modal d'ajout d'emprunt
 const borrowModal = ref({

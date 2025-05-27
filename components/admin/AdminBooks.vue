@@ -453,15 +453,14 @@ const filteredBooks = computed(() => {
 const loadBooks = async () => {
     loading.value = true;
     try {
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
-        // Récupérer les livres
-        const booksData = await api.get('/books');
-
-        // Récupérer les auteurs et éditeurs pour la présentation
-        const authorsData = await api.get('/authors');
-        const editorsData = await api.get('/editors');
+        // Récupérer les livres, auteurs et éditeurs
+        const [booksData, authorsData, editorsData] = await Promise.all([
+            api.get('/books'),
+            api.get('/authors'),
+            api.get('/editors')
+        ]);
 
         // Stocker les listes d'auteurs et d'éditeurs pour le formulaire
         authors.value = authorsData;
@@ -493,7 +492,9 @@ const loadBooks = async () => {
                 rating: book.average_rating || 0,
                 coverUrl: book.thumbnails || '/api/placeholder/150/220',
                 available: !borrowedBooks.includes(book.isbn),
-                category: book.category || 'non-catégorisé',
+                category: Array.isArray(book.keyword)
+                    ? book.keyword.join(', ')
+                    : book.keyword || 'non-catégorisé',
                 pages: book.pages || 0,
                 year: book.publish_year || 0,
                 isbn: book.isbn,
@@ -590,83 +591,71 @@ const handleCoverChange = (file) => {
 };
 
 const saveBook = async () => {
-    bookFormRef.value.validate(async (valid) => {
-        if (valid) {
-            bookModal.value.loading = true;
+    try {
+        await bookFormRef.value.validate();
+        bookModal.value.loading = true;
 
-            try {
-                // Importer le service API
-                const api = (await import('@/services/api')).default;
+        const api = (await import('@/services/api')).default;
 
-                // Préparer les données pour l'API
-                const bookData = {
-                    isbn: bookModal.value.form.isbn,
-                    title: bookModal.value.form.title,
-                    author: getAuthorIdByName(bookModal.value.form.author),
-                    editor: getEditorIdByName(bookModal.value.form.publisher),
-                    thumbnails: bookModal.value.form.coverUrl,
-                    average_rating: bookModal.value.form.rating || 0,
-                    ratings_count: 0,
-                    keyword: bookModal.value.form.category
-                        ? [bookModal.value.form.category]
-                        : [],
-                    summary: bookModal.value.form.description,
-                    publish_year: bookModal.value.form.year,
-                    pages: bookModal.value.form.pages,
-                    language: bookModal.value.form.language
-                };
+        // Préparer les données pour l'API
+        const bookData = {
+            isbn: bookModal.value.form.isbn,
+            title: bookModal.value.form.title,
+            author: getAuthorIdByName(bookModal.value.form.author),
+            editor: getEditorIdByName(bookModal.value.form.publisher),
+            thumbnails: bookModal.value.form.coverUrl,
+            average_rating: bookModal.value.form.rating || 0,
+            ratings_count: 0,
+            keyword: bookModal.value.form.category
+                ? [bookModal.value.form.category]
+                : [],
+            summary: bookModal.value.form.description,
+            publish_year: bookModal.value.form.year,
+            pages: bookModal.value.form.pages,
+            language: bookModal.value.form.language
+        };
 
-                if (bookModal.value.isEdit) {
-                    // Mettre à jour le livre existant
-                    await api.put(
-                        `/books/${bookModal.value.form.isbn}`,
-                        bookData
-                    );
+        if (bookModal.value.isEdit) {
+            // Mettre à jour le livre existant
+            await api.put(`/books/${bookModal.value.form.isbn}`, bookData);
 
-                    ElMessage({
-                        type: 'success',
-                        message: 'Livre mis à jour avec succès'
-                    });
-                } else {
-                    // Ajouter un nouveau livre
-                    await api.post('/books', bookData);
+            ElMessage({
+                type: 'success',
+                message: 'Livre mis à jour avec succès'
+            });
+        } else {
+            // Ajouter un nouveau livre
+            await api.post('/books', bookData);
 
-                    ElMessage({
-                        type: 'success',
-                        message: 'Livre ajouté avec succès'
-                    });
-                }
-
-                // Recharger les livres pour mettre à jour l'affichage
-                await loadBooks();
-
-                bookModal.value.loading = false;
-                bookModal.value.visible = false;
-            } catch (error) {
-                console.error('Erreur lors de la sauvegarde du livre:', error);
-
-                ElMessage({
-                    type: 'error',
-                    message:
-                        error.message ||
-                        'Une erreur est survenue lors de la sauvegarde'
-                });
-
-                bookModal.value.loading = false;
-            }
+            ElMessage({
+                type: 'success',
+                message: 'Livre ajouté avec succès'
+            });
         }
-    });
+
+        // Recharger les livres
+        await loadBooks();
+        bookModal.value.visible = false;
+    } catch (error) {
+        console.error('Erreur lors de la sauvegarde du livre:', error);
+
+        ElMessage({
+            type: 'error',
+            message:
+                error.message || 'Une erreur est survenue lors de la sauvegarde'
+        });
+    } finally {
+        bookModal.value.loading = false;
+    }
 };
 
 const toggleBookAvailability = async (book) => {
     try {
         loading.value = true;
-
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
         if (book.available) {
-            // Si le livre est disponible, nous le rendons indisponible en le réservant
+            // Si le livre est disponible, créer une réservation fictive pour le rendre indisponible
             await api.post('/reservation/books', { book_id: book.isbn });
 
             ElMessage({
@@ -674,8 +663,7 @@ const toggleBookAvailability = async (book) => {
                 message: `Le livre "${book.title}" est maintenant indisponible`
             });
         } else {
-            // Si le livre est indisponible, nous le rendons disponible en annulant la réservation
-            // Pour cela, il faudrait d'abord trouver la réservation active
+            // Si indisponible, trouver la réservation active et la marquer comme retournée
             const reservations = await api.get('/reservation/books');
             const activeReservation = reservations.find(
                 (r) => r.book_id === book.isbn && !r.return_date
@@ -698,14 +686,13 @@ const toggleBookAvailability = async (book) => {
             }
         }
 
-        // Recharger les livres pour mettre à jour l'affichage
+        // Recharger les livres
         await loadBooks();
     } catch (error) {
         console.error(
             'Erreur lors de la modification de la disponibilité:',
             error
         );
-
         ElMessage({
             type: 'error',
             message: error.message || 'Une erreur est survenue'
@@ -728,7 +715,6 @@ const deleteBook = async () => {
     try {
         confirmDialog.value.loading = true;
 
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
         // Trouver l'ISBN du livre à supprimer
@@ -742,7 +728,7 @@ const deleteBook = async () => {
         // Supprimer le livre en utilisant son ISBN
         await api.delete(`/books/${bookToDelete.isbn}`);
 
-        // Recharger les livres pour mettre à jour l'affichage
+        // Recharger les livres
         await loadBooks();
 
         ElMessage({
@@ -776,11 +762,9 @@ const getAuthorIdByName = (fullName) => {
     let lastName = '';
 
     if (parts.length >= 2) {
-        // Dans un cas simple, le premier élément est le prénom, le reste est le nom
         firstName = parts[0];
         lastName = parts.slice(1).join(' ');
     } else {
-        // Si un seul mot, considérer comme nom de famille
         lastName = fullName;
     }
 
@@ -794,7 +778,6 @@ const getAuthorIdByName = (fullName) => {
 
     return author ? author.id : null;
 };
-
 // Fonction utilitaire pour obtenir l'ID d'un éditeur à partir de son nom
 const getEditorIdByName = (name) => {
     if (!name || !editors.value || editors.value.length === 0) return null;

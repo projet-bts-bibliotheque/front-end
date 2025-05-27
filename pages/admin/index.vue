@@ -8,10 +8,11 @@ import AdminBorrows from '~/components/admin/AdminBorrows.vue';
 import AdminReservations from '~/components/admin/AdminReservations.vue';
 import AdminSettings from '~/components/admin/AdminSettings.vue';
 import { useRouter } from 'vue-router';
+import { ElNotification } from 'element-plus';
 
-// Définir le layout pour cette page
+// Middleware de protection admin
 definePageMeta({
-    layout: 'admin'
+    middleware: 'admin'
 });
 
 const router = useRouter();
@@ -21,18 +22,18 @@ const activeTab = ref('dashboard');
 
 // État de l'utilisateur courant
 const currentUser = ref({
-    id: 1,
-    name: 'Admin Test',
-    email: 'admin@bibliotheque.fr',
-    role: 'admin', // 'admin' ou 'librarian'
-    avatar: '/api/placeholder/100/100?text=Admin'
+    id: null,
+    name: '',
+    email: '',
+    role: 0,
+    avatar: null
 });
 
+const loading = ref(true);
+
 // Computed properties pour les permissions
-const isAdmin = computed(() => currentUser.value.role === 'admin');
-const isLibrarian = computed(() =>
-    ['admin', 'librarian'].includes(currentUser.value.role)
-);
+const isAdmin = computed(() => currentUser.value.role >= 2);
+const isLibrarian = computed(() => currentUser.value.role >= 1);
 
 const canManageBooks = computed(() => isLibrarian.value);
 const canManageRooms = computed(() => isLibrarian.value);
@@ -40,18 +41,65 @@ const canManageUsers = computed(() => isAdmin.value);
 const canManageBorrows = computed(() => isLibrarian.value);
 const canManageReservations = computed(() => isLibrarian.value);
 
+// Chargement des données utilisateur
+const loadCurrentUser = async () => {
+    try {
+        const api = (await import('@/services/api')).default;
+        const userData = await api.get('/me');
+
+        currentUser.value = {
+            id: userData.id,
+            name: `${userData.first_name} ${userData.last_name}`,
+            email: userData.email,
+            role: userData.role,
+            avatar: `/api/placeholder/100/100?text=${userData.first_name.charAt(
+                0
+            )}${userData.last_name.charAt(0)}`
+        };
+
+        // Vérifier si l'utilisateur a les droits d'administration
+        if (userData.role < 1) {
+            ElNotification({
+                title: 'Accès refusé',
+                message: "Vous n'avez pas les droits d'administration",
+                type: 'error'
+            });
+            router.push('/');
+            return;
+        }
+    } catch (error) {
+        console.error('Erreur chargement utilisateur:', error);
+        ElNotification({
+            title: 'Erreur',
+            message: "Impossible de vérifier vos droits d'accès",
+            type: 'error'
+        });
+        router.push('/');
+    } finally {
+        loading.value = false;
+    }
+};
+
 // Fonction pour retourner à la page d'accueil
 const goToHome = () => {
     router.push('/');
 };
 
-onMounted(() => {
-    // Récupérer des données initiales si nécessaire
+// Chargement initial
+onMounted(async () => {
+    await loadCurrentUser();
 });
+
+// Labels des rôles
+const roleLabels = {
+    0: 'Membre',
+    1: 'Bibliothécaire',
+    2: 'Administrateur'
+};
 </script>
 
 <template>
-    <div class="admin-page">
+    <div class="admin-page" v-if="!loading">
         <div class="admin-header">
             <h1>Administration de la bibliothèque</h1>
             <div class="user-container">
@@ -124,28 +172,24 @@ onMounted(() => {
             </el-tabs>
         </div>
     </div>
+
+    <div v-else class="admin-loading">
+        <el-skeleton :rows="10" animated />
+    </div>
 </template>
 
 <script>
 import { Back } from '@element-plus/icons-vue';
 
 export default {
-    components: { Back },
-    data() {
-        return {
-            roleLabels: {
-                admin: 'Administrateur',
-                librarian: 'Bibliothécaire',
-                member: 'Membre'
-            }
-        };
-    }
+    components: { Back }
 };
 </script>
 
 <style scoped>
 .admin-page {
     background-color: #f5f7fa;
+    min-height: 100vh;
 }
 
 .admin-header {
@@ -196,7 +240,7 @@ export default {
 }
 
 .admin-container {
-    width: 70%;
+    width: 90%;
     max-width: 1400px;
     margin: 30px auto;
 }
@@ -205,6 +249,10 @@ export default {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     background-color: #fff;
+}
+
+.admin-loading {
+    padding: 50px;
 }
 
 /* Styles pour les onglets */
@@ -233,7 +281,7 @@ export default {
 /* Responsive */
 @media (max-width: 1200px) {
     .admin-container {
-        width: 85%;
+        width: 95%;
     }
 }
 

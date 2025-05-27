@@ -437,9 +437,11 @@
 </template>
 
 <script setup>
+// Section <script setup> corrigée pour pages/book/[id].vue
+
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useHead } from '@vueuse/head';
+// ✅ Supprimé: import { useHead } from '@vueuse/head'; - useHead est disponible automatiquement dans Nuxt 3
 import {
     Star,
     StarFilled,
@@ -480,10 +482,52 @@ const bookItemWidth = 220;
 const bookGap = 20;
 const visibleItems = ref(4);
 
+// Exemple de données (vous pouvez les récupérer depuis votre API)
+const sampleBooks = [{}];
+
+// Générer une date future aléatoire
+const randomReviewCount = Math.floor(Math.random() * 500) + 50;
+const randomAvailableCount = Math.floor(Math.random() * 5) + 1;
+const expectedReturnDate = getRandomFutureDate();
+
+// Calculer les informations du livre
+const isLoggedIn = ref(false);
+
 // Calcul du nombre de livres visibles en fonction de la taille de l'écran
 onMounted(() => {
     updateVisibleItems();
     window.addEventListener('resize', updateVisibleItems);
+
+    // Simulation d'une requête API pour charger le livre
+    setTimeout(() => {
+        book.value = sampleBooks.find((book) => book.id === bookId) || null;
+
+        if (!book.value) {
+            // Redirection si le livre n'existe pas
+            router.push('/');
+            ElNotification({
+                title: 'Livre non trouvé',
+                message:
+                    "Le livre demandé n'existe pas dans notre bibliothèque.",
+                type: 'error'
+            });
+        }
+
+        // ✅ Utilisation correcte de useHead dans Nuxt 3
+        if (book.value) {
+            useHead({
+                title: `${book.value.title} - BibliothèqueNuxt`,
+                meta: [
+                    {
+                        name: 'description',
+                        content:
+                            book.value.description ||
+                            `Découvrez "${book.value.title}" de ${book.value.author} dans notre bibliothèque.`
+                    }
+                ]
+            });
+        }
+    }, 800);
 });
 
 // Nettoyage à la destruction du composant
@@ -594,27 +638,11 @@ const booksByAuthor = computed(() => {
 
 // Livres populaires en ce moment (simulés)
 const trendingBooks = computed(() => {
-    // Pour la démonstration, nous prenons les livres les mieux notés
     return [...sampleBooks]
         .sort((a, b) => b.rating - a.rating)
         .filter((b) => b.id !== book.value?.id)
         .slice(0, 6);
 });
-
-// Fonction pour effectuer une recherche de livres
-const querySearch = (queryString, cb) => {
-    const results = queryString
-        ? sampleBooks.filter((book) => {
-              return (
-                  book.title
-                      .toLowerCase()
-                      .includes(queryString.toLowerCase()) ||
-                  book.author.toLowerCase().includes(queryString.toLowerCase())
-              );
-          })
-        : [];
-    cb(results.map((book) => ({ value: book.title, book })));
-};
 
 // Fonction pour générer une date future aléatoire
 function getRandomFutureDate(minDays = 3, maxDays = 30) {
@@ -631,33 +659,6 @@ function getRandomFutureDate(minDays = 3, maxDays = 30) {
     });
 }
 
-// Chargement du livre lors du montage du composant
-onMounted(() => {
-    // Simulation d'une requête API
-    setTimeout(() => {
-        book.value = sampleBooks.find((book) => book.id === bookId) || null;
-
-        if (!book.value) {
-            // Redirection si le livre n'existe pas
-            router.push('/');
-            ElNotification({
-                title: 'Livre non trouvé',
-                message:
-                    "Le livre demandé n'existe pas dans notre bibliothèque.",
-                type: 'error'
-            });
-        }
-
-        // Mettre à jour le titre de la page
-        if (book.value) {
-            useHead({
-                title: `${book.value.title} - BibliothèqueNuxt`
-            });
-        }
-    }, 800);
-});
-
-// Fonctions pour les actions utilisateurs
 // Fonctions pour les actions utilisateurs
 const reserveBook = async () => {
     if (!book.value?.available) {
@@ -669,7 +670,7 @@ const reserveBook = async () => {
         return;
     }
 
-    if (!isUserLoggedIn()) {
+    if (!isLoggedIn.value) {
         showLoginModal.value = true;
         ElNotification({
             title: 'Connexion requise',
@@ -709,7 +710,7 @@ const reserveBook = async () => {
 };
 
 const addToFavorites = () => {
-    if (!isUserLoggedIn()) {
+    if (!isLoggedIn.value) {
         showLoginModal.value = true;
         ElNotification({
             title: 'Connexion requise',

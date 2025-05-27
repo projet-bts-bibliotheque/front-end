@@ -6,7 +6,7 @@ export default {
      * URL de base de l'API
      * En production, utilisez une variable d'environnement
      */
-    baseURL: process.env.API_URL || 'http://localhost:8000/api',
+    baseURL: process.env.API_URL || 'http://localhost:1234/api',
 
     /**
      * Timeout des requêtes en millisecondes

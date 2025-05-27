@@ -46,18 +46,22 @@
                 </div>
                 <template #dropdown>
                     <el-dropdown-menu>
-                        <el-dropdown-item command="profile"
-                            >Mon profil</el-dropdown-item
-                        >
-                        <el-dropdown-item command="borrows"
-                            >Mes emprunts</el-dropdown-item
-                        >
-                        <el-dropdown-item command="reservations"
-                            >Mes réservations</el-dropdown-item
-                        >
-                        <el-dropdown-item divided command="logout"
-                            >Se déconnecter</el-dropdown-item
-                        >
+                        <el-dropdown-item command="profile">
+                            <el-icon><User /></el-icon>
+                            Mon profil
+                        </el-dropdown-item>
+                        <el-dropdown-item command="borrows">
+                            <el-icon><Reading /></el-icon>
+                            Mes emprunts
+                        </el-dropdown-item>
+                        <el-dropdown-item command="reservations">
+                            <el-icon><Calendar /></el-icon>
+                            Mes réservations
+                        </el-dropdown-item>
+                        <el-dropdown-item divided command="logout">
+                            <el-icon><SwitchButton /></el-icon>
+                            Se déconnecter
+                        </el-dropdown-item>
                     </el-dropdown-menu>
                 </template>
             </el-dropdown>
@@ -128,10 +132,10 @@ const handleCommand = (command) => {
             navigateTo('/profile');
             break;
         case 'borrows':
-            navigateTo('/profile/borrows');
+            navigateTo('/profile?tab=books');
             break;
         case 'reservations':
-            navigateTo('/profile/reservations');
+            navigateTo('/profile?tab=rooms');
             break;
         case 'logout':
             emit('logout');

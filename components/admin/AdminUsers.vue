@@ -25,20 +25,9 @@
                 @change="filterUsers"
                 class="filter-select"
             >
-                <el-option label="Membre" value="member" />
-                <el-option label="Bibliothécaire" value="librarian" />
-                <el-option label="Administrateur" value="admin" />
-            </el-select>
-
-            <el-select
-                v-model="statusFilter"
-                placeholder="Statut"
-                clearable
-                @change="filterUsers"
-                class="filter-select"
-            >
-                <el-option label="Actif" value="active" />
-                <el-option label="Suspendu" value="suspended" />
+                <el-option label="Membre" :value="0" />
+                <el-option label="Bibliothécaire" :value="1" />
+                <el-option label="Administrateur" :value="2" />
             </el-select>
         </div>
 
@@ -56,6 +45,7 @@
             </el-table-column>
             <el-table-column prop="name" label="Nom" sortable />
             <el-table-column prop="email" label="Email" sortable />
+            <el-table-column prop="phone" label="Téléphone" sortable />
             <el-table-column prop="role" label="Rôle" sortable width="140">
                 <template #default="scope">
                     <el-tag
@@ -67,28 +57,13 @@
                     </el-tag>
                 </template>
             </el-table-column>
-            <el-table-column prop="status" label="Statut" sortable width="120">
-                <template #default="scope">
-                    <el-tag
-                        :type="
-                            scope.row.status === 'active' ? 'success' : 'danger'
-                        "
-                        size="large"
-                        effect="light"
-                    >
-                        {{
-                            scope.row.status === 'active' ? 'Actif' : 'Suspendu'
-                        }}
-                    </el-tag>
-                </template>
-            </el-table-column>
             <el-table-column
                 prop="memberSince"
                 label="Inscrit depuis"
                 sortable
                 width="150"
             />
-            <el-table-column label="Actions" width="250">
+            <el-table-column label="Actions" width="200">
                 <template #default="scope">
                     <el-button-group>
                         <el-button
@@ -100,31 +75,12 @@
                             <el-icon><Edit /></el-icon>
                         </el-button>
                         <el-button
-                            :type="
-                                scope.row.status === 'active'
-                                    ? 'warning'
-                                    : 'success'
-                            "
-                            size="small"
-                            @click="toggleUserStatus(scope.row)"
-                            :title="
-                                scope.row.status === 'active'
-                                    ? 'Suspendre'
-                                    : 'Activer'
-                            "
-                        >
-                            <el-icon v-if="scope.row.status === 'active'"
-                                ><Lock
-                            /></el-icon>
-                            <el-icon v-else><Unlock /></el-icon>
-                        </el-button>
-                        <el-button
                             type="info"
                             size="small"
-                            @click="viewBorrows(scope.row)"
-                            title="Voir les emprunts"
+                            @click="viewUserDetails(scope.row)"
+                            title="Voir détails"
                         >
-                            <el-icon><Reading /></el-icon>
+                            <el-icon><View /></el-icon>
                         </el-button>
                         <el-button
                             type="danger"
@@ -170,15 +126,15 @@
                 label-position="top"
             >
                 <div class="form-row">
-                    <el-form-item label="Prénom" prop="firstName">
+                    <el-form-item label="Prénom" prop="first_name">
                         <el-input
-                            v-model="userModal.form.firstName"
+                            v-model="userModal.form.first_name"
                             placeholder="Prénom"
                         />
                     </el-form-item>
-                    <el-form-item label="Nom" prop="lastName">
+                    <el-form-item label="Nom" prop="last_name">
                         <el-input
-                            v-model="userModal.form.lastName"
+                            v-model="userModal.form.last_name"
                             placeholder="Nom"
                         />
                     </el-form-item>
@@ -204,12 +160,9 @@
                             placeholder="Rôle de l'utilisateur"
                             style="width: 100%"
                         >
-                            <el-option label="Membre" value="member" />
-                            <el-option
-                                label="Bibliothécaire"
-                                value="librarian"
-                            />
-                            <el-option label="Administrateur" value="admin" />
+                            <el-option label="Membre" :value="0" />
+                            <el-option label="Bibliothécaire" :value="1" />
+                            <el-option label="Administrateur" :value="2" />
                         </el-select>
                     </el-form-item>
                 </div>
@@ -244,14 +197,6 @@
                         </el-form-item>
                     </div>
                 </div>
-
-                <el-form-item label="Statut">
-                    <el-switch
-                        v-model="userModal.form.isActive"
-                        active-text="Actif"
-                        inactive-text="Suspendu"
-                    />
-                </el-form-item>
             </el-form>
 
             <template #footer>
@@ -296,38 +241,74 @@
                 </span>
             </template>
         </el-dialog>
+
+        <!-- Dialog de détails utilisateur -->
+        <el-dialog
+            v-model="detailsDialog.visible"
+            title="Détails de l'utilisateur"
+            width="600px"
+        >
+            <div v-if="detailsDialog.user" class="user-details">
+                <div class="detail-row">
+                    <label>Nom complet:</label>
+                    <span>{{ detailsDialog.user.name }}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Email:</label>
+                    <span>{{ detailsDialog.user.email }}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Téléphone:</label>
+                    <span>{{
+                        detailsDialog.user.phone || 'Non renseigné'
+                    }}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Adresse:</label>
+                    <span>{{
+                        detailsDialog.user.address || 'Non renseignée'
+                    }}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Rôle:</label>
+                    <el-tag :type="getRoleTagType(detailsDialog.user.role)">
+                        {{ getRoleLabel(detailsDialog.user.role) }}
+                    </el-tag>
+                </div>
+                <div class="detail-row">
+                    <label>Membre depuis:</label>
+                    <span>{{ detailsDialog.user.memberSince }}</span>
+                </div>
+            </div>
+        </el-dialog>
     </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import {
     Plus,
     Edit,
     Delete,
-    Lock,
-    Unlock,
-    Reading,
+    View,
     Search,
     WarningFilled
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 
-// Utilisateur courant pour la comparaison
-const currentUser = ref({
-    id: 1
-});
-
 // État
 const loading = ref(false);
 const searchQuery = ref('');
 const roleFilter = ref('');
-const statusFilter = ref('');
 const currentPage = ref(1);
 const pageSize = ref(10);
 
+// Utilisateur courant pour empêcher l'auto-suppression
+const currentUser = ref({ id: null });
+
 // Données des utilisateurs
 const users = ref([]);
+
 // État du modal d'ajout/édition
 const userModal = ref({
     visible: false,
@@ -335,15 +316,14 @@ const userModal = ref({
     loading: false,
     form: {
         id: null,
-        firstName: '',
-        lastName: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
         address: '',
-        role: 'member',
+        role: 0,
         password: '',
-        confirmPassword: '',
-        isActive: true
+        confirmPassword: ''
     }
 });
 
@@ -355,19 +335,25 @@ const confirmDialog = ref({
     loading: false
 });
 
+// État du dialog de détails
+const detailsDialog = ref({
+    visible: false,
+    user: null
+});
+
 // Référence au formulaire
 const userFormRef = ref(null);
 
 // Règles de validation
 const userValidationRules = {
-    firstName: [
+    first_name: [
         {
             required: true,
             message: 'Veuillez saisir le prénom',
             trigger: 'blur'
         }
     ],
-    lastName: [
+    last_name: [
         { required: true, message: 'Veuillez saisir le nom', trigger: 'blur' }
     ],
     email: [
@@ -393,16 +379,19 @@ const userValidationRules = {
         {
             required: true,
             message: 'Veuillez saisir un mot de passe',
-            trigger: 'blur',
-            when: (form) => !userModal.value.isEdit
+            trigger: 'blur'
+        },
+        {
+            min: 8,
+            message: 'Le mot de passe doit contenir au moins 8 caractères',
+            trigger: 'blur'
         }
     ],
     confirmPassword: [
         {
             required: true,
             message: 'Veuillez confirmer le mot de passe',
-            trigger: 'blur',
-            when: (form) => !userModal.value.isEdit
+            trigger: 'blur'
         },
         {
             validator: (rule, value, callback) => {
@@ -414,32 +403,35 @@ const userValidationRules = {
                     callback();
                 }
             },
-            trigger: 'blur',
-            when: (form) => !userModal.value.isEdit
+            trigger: 'blur'
         }
     ]
 };
 
+// Chargement des utilisateurs
 const loadUsers = async () => {
     loading.value = true;
     try {
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
-        // Récupérer les utilisateurs
-        const userData = await api.get('/users');
+        // Charger l'utilisateur courant et la liste des utilisateurs
+        const [userData, usersData] = await Promise.all([
+            api.get('/me'),
+            api.get('/users')
+        ]);
+
+        currentUser.value = userData;
 
         // Transformer les données pour notre interface
-        users.value = userData.map((user) => ({
+        users.value = usersData.map((user) => ({
             id: user.id,
             name: `${user.first_name} ${user.last_name}`,
-            firstName: user.first_name,
-            lastName: user.last_name,
+            first_name: user.first_name,
+            last_name: user.last_name,
             email: user.email,
-            phone: user.phone,
-            address: user.address,
+            phone: user.phone || '',
+            address: user.address || '',
             role: user.role,
-            status: user.status || 'active',
             avatar: `/api/placeholder/100/100?text=${user.first_name.charAt(
                 0
             )}${user.last_name.charAt(0)}`,
@@ -457,11 +449,6 @@ const loadUsers = async () => {
     }
 };
 
-// Charger les utilisateurs au montage du composant
-onMounted(async () => {
-    await loadUsers();
-});
-
 // Utilisateurs filtrés selon les critères de recherche
 const filteredUsers = computed(() => {
     let result = [...users.value];
@@ -476,12 +463,8 @@ const filteredUsers = computed(() => {
         );
     }
 
-    if (roleFilter.value) {
+    if (roleFilter.value !== '') {
         result = result.filter((user) => user.role === roleFilter.value);
-    }
-
-    if (statusFilter.value) {
-        result = result.filter((user) => user.status === statusFilter.value);
     }
 
     return result;
@@ -493,27 +476,27 @@ const paginatedUsers = computed(() => {
     return filteredUsers.value.slice(startIndex, startIndex + pageSize.value);
 });
 
-// Fonctions
+// Fonctions utilitaires
 const getRoleLabel = (role) => {
     switch (role) {
-        case 'admin':
+        case 2:
             return 'Administrateur';
-        case 'librarian':
+        case 1:
             return 'Bibliothécaire';
-        case 'member':
+        case 0:
             return 'Membre';
         default:
-            return role;
+            return 'Membre';
     }
 };
 
 const getRoleTagType = (role) => {
     switch (role) {
-        case 'admin':
+        case 2:
             return 'danger';
-        case 'librarian':
+        case 1:
             return 'warning';
-        case 'member':
+        case 0:
             return 'info';
         default:
             return 'info';
@@ -523,7 +506,6 @@ const getRoleTagType = (role) => {
 const resetFilters = () => {
     searchQuery.value = '';
     roleFilter.value = '';
-    statusFilter.value = '';
     currentPage.value = 1;
 };
 
@@ -540,19 +522,19 @@ const handleCurrentChange = (val) => {
     currentPage.value = val;
 };
 
+// Actions utilisateur
 const openAddUserModal = () => {
     userModal.value.isEdit = false;
     userModal.value.form = {
         id: null,
-        firstName: '',
-        lastName: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
         address: '',
-        role: 'member',
+        role: 0,
         password: '',
-        confirmPassword: '',
-        isActive: true
+        confirmPassword: ''
     };
     userModal.value.visible = true;
 };
@@ -561,13 +543,14 @@ const editUser = (user) => {
     userModal.value.isEdit = true;
     userModal.value.form = {
         id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
         phone: user.phone,
         address: user.address,
         role: user.role,
-        isActive: user.status === 'active'
+        password: '',
+        confirmPassword: ''
     };
     userModal.value.visible = true;
 };
@@ -576,168 +559,68 @@ const closeUserModal = () => {
     userModal.value.visible = false;
 };
 
-const saveUser = async () => {
-    userFormRef.value.validate(async (valid) => {
-        if (valid) {
-            userModal.value.loading = true;
-
-            try {
-                // Importer le service API
-                const api = (await import('@/services/api')).default;
-
-                if (userModal.value.isEdit) {
-                    // Préparer les données pour l'API
-                    const userData = {
-                        first_name: userModal.value.form.firstName,
-                        last_name: userModal.value.form.lastName,
-                        email: userModal.value.form.email,
-                        address: userModal.value.form.address,
-                        phone: userModal.value.form.phone,
-                        role: userModal.value.form.role
-                    };
-
-                    // Mettre à jour l'utilisateur existant
-                    await api.put(
-                        `/users/${userModal.value.form.id}`,
-                        userData
-                    );
-
-                    // Mettre à jour l'affichage
-                    await loadUsers();
-
-                    ElMessage({
-                        type: 'success',
-                        message: 'Utilisateur mis à jour avec succès'
-                    });
-                } else {
-                    // Préparer les données pour l'API
-                    const userData = {
-                        first_name: userModal.value.form.firstName,
-                        last_name: userModal.value.form.lastName,
-                        email: userModal.value.form.email,
-                        password: userModal.value.form.password,
-                        address: userModal.value.form.address,
-                        phone: userModal.value.form.phone,
-                        role: userModal.value.form.role
-                    };
-
-                    // Ajouter un nouvel utilisateur
-                    await api.post('/register', userData);
-
-                    // Mettre à jour l'affichage
-                    await loadUsers();
-
-                    ElMessage({
-                        type: 'success',
-                        message: 'Utilisateur ajouté avec succès'
-                    });
-                }
-
-                userModal.value.visible = false;
-            } catch (error) {
-                console.error(
-                    "Erreur lors de la sauvegarde de l'utilisateur:",
-                    error
-                );
-
-                ElMessage({
-                    type: 'error',
-                    message:
-                        error.message ||
-                        'Une erreur est survenue lors de la sauvegarde'
-                });
-            } finally {
-                userModal.value.loading = false;
-            }
-        }
-    });
+const viewUserDetails = (user) => {
+    detailsDialog.value.user = user;
+    detailsDialog.value.visible = true;
 };
 
-const toggleUserStatus = async (user) => {
+const saveUser = async () => {
     try {
-        loading.value = true;
+        await userFormRef.value.validate();
+        userModal.value.loading = true;
 
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
-        // Dans un système réel, vous auriez probablement un endpoint spécifique pour changer le statut
-        // Ici, nous utilisons le même endpoint de mise à jour
-        const userData = {
-            first_name: user.firstName,
-            last_name: user.lastName,
-            email: user.email,
-            address: user.address,
-            phone: user.phone,
-            role: user.role,
-            status: user.status === 'active' ? 'suspended' : 'active'
-        };
+        if (userModal.value.isEdit) {
+            // Mettre à jour l'utilisateur existant
+            const userData = {
+                first_name: userModal.value.form.first_name,
+                last_name: userModal.value.form.last_name,
+                email: userModal.value.form.email,
+                address: userModal.value.form.address,
+                phone: userModal.value.form.phone,
+                role: userModal.value.form.role
+            };
 
-        await api.put(`/users/${user.id}`, userData);
+            await api.put(`/users/${userModal.value.form.id}`, userData);
 
-        // Mettre à jour l'affichage
+            ElMessage({
+                type: 'success',
+                message: 'Utilisateur mis à jour avec succès'
+            });
+        } else {
+            // Ajouter un nouvel utilisateur
+            const userData = {
+                first_name: userModal.value.form.first_name,
+                last_name: userModal.value.form.last_name,
+                email: userModal.value.form.email,
+                password: userModal.value.form.password,
+                address: userModal.value.form.address,
+                phone: userModal.value.form.phone,
+                role: userModal.value.form.role
+            };
+
+            await api.post('/register', userData);
+
+            ElMessage({
+                type: 'success',
+                message: 'Utilisateur ajouté avec succès'
+            });
+        }
+
+        // Recharger les utilisateurs
         await loadUsers();
-
-        ElMessage({
-            type: 'success',
-            message: `Utilisateur ${user.name} ${
-                user.status === 'active' ? 'suspendu' : 'activé'
-            } avec succès`
-        });
+        userModal.value.visible = false;
     } catch (error) {
-        console.error('Erreur lors du changement de statut:', error);
-
+        console.error("Erreur lors de la sauvegarde de l'utilisateur:", error);
         ElMessage({
             type: 'error',
             message:
-                error.message ||
-                'Une erreur est survenue lors du changement de statut'
+                error.message || 'Une erreur est survenue lors de la sauvegarde'
         });
     } finally {
-        loading.value = false;
+        userModal.value.loading = false;
     }
-};
-
-const deleteUser = async () => {
-    try {
-        confirmDialog.value.loading = true;
-
-        // Importer le service API
-        const api = (await import('@/services/api')).default;
-
-        // Supprimer l'utilisateur
-        await api.delete(`/users/${confirmDialog.value.userId}`);
-
-        // Mettre à jour l'affichage
-        await loadUsers();
-
-        ElMessage({
-            type: 'success',
-            message: 'Utilisateur supprimé avec succès'
-        });
-
-        confirmDialog.value.loading = false;
-        confirmDialog.value.visible = false;
-    } catch (error) {
-        console.error("Erreur lors de la suppression de l'utilisateur:", error);
-
-        ElMessage({
-            type: 'error',
-            message:
-                error.message ||
-                'Une erreur est survenue lors de la suppression'
-        });
-
-        confirmDialog.value.loading = false;
-    }
-};
-
-const viewBorrows = (user) => {
-    // Action pour voir les emprunts de cet utilisateur
-    // À implémenter selon vos besoins
-    ElMessage({
-        type: 'info',
-        message: `Affichage des emprunts de ${user.name}`
-    });
 };
 
 const confirmDeleteUser = (user) => {
@@ -757,6 +640,40 @@ const confirmDeleteUser = (user) => {
         loading: false
     };
 };
+
+const deleteUser = async () => {
+    try {
+        confirmDialog.value.loading = true;
+
+        const api = (await import('@/services/api')).default;
+        await api.delete(`/users/${confirmDialog.value.userId}`);
+
+        // Recharger les utilisateurs
+        await loadUsers();
+
+        ElMessage({
+            type: 'success',
+            message: 'Utilisateur supprimé avec succès'
+        });
+
+        confirmDialog.value.loading = false;
+        confirmDialog.value.visible = false;
+    } catch (error) {
+        console.error("Erreur lors de la suppression de l'utilisateur:", error);
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la suppression'
+        });
+        confirmDialog.value.loading = false;
+    }
+};
+
+// Chargement initial
+onMounted(async () => {
+    await loadUsers();
+});
 </script>
 
 <style scoped>
@@ -829,6 +746,31 @@ const confirmDeleteUser = (user) => {
     color: #f56c6c;
 }
 
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row label {
+    font-weight: 600;
+    color: #666;
+    min-width: 120px;
+}
+
+.detail-row span {
+    flex: 1;
+    text-align: right;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .search-filter-container {
@@ -844,6 +786,16 @@ const confirmDeleteUser = (user) => {
     .form-row {
         flex-direction: column;
         gap: 0;
+    }
+
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .detail-row span {
+        text-align: left;
     }
 }
 </style>

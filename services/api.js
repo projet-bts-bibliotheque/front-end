@@ -1,6 +1,6 @@
 // Service central pour les appels API
 
-const API_URL = process.env.API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.API_URL || 'http://localhost:1234/api';
 
 /**
  * Service pour gérer toutes les requêtes API

@@ -310,7 +310,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import {
     Plus,
     Edit,
@@ -339,74 +339,42 @@ const roomTypes = [
     { value: 'Multimédia', label: 'Multimédia' }
 ];
 
+onMounted(async () => {
+    await loadRooms();
+});
+
 // Données des salles
-const rooms = ref([
-    {
-        id: 1,
-        name: "Salle d'étude A1",
-        type: 'Individuelle',
-        capacity: 2,
-        dimension: 8,
-        floor: '1er étage, aile Est',
-        features: ['wifi', 'whiteboard'],
-        popular: true,
-        imageUrl: '/api/placeholder/400/250?text=Salle+A1',
-        description:
-            "Petite salle individuelle idéale pour un travail au calme ou des entretiens en tête-à-tête. Équipée d'une table spacieuse, de prises électriques et d'un tableau blanc."
-    },
-    {
-        id: 2,
-        name: 'Salle de groupe B2',
-        type: 'Groupe',
-        capacity: 6,
-        dimension: 18,
-        floor: '1er étage, aile Ouest',
-        features: ['wifi', 'whiteboard', 'projector'],
-        popular: false,
-        imageUrl: '/api/placeholder/400/250?text=Salle+B2',
-        description:
-            "Salle de taille moyenne pour les travaux de groupe et les projets collaboratifs. Elle dispose d'un grand tableau blanc et d'un vidéoprojecteur pour faciliter les présentations et les discussions en groupe."
-    },
-    {
-        id: 3,
-        name: 'Salle de conférence C1',
-        type: 'Présentation',
-        capacity: 12,
-        dimension: 30,
-        floor: '2ème étage, aile centrale',
-        features: ['wifi', 'projector', 'whiteboard'],
-        popular: true,
-        imageUrl: '/api/placeholder/400/250?text=Salle+C1',
-        description:
-            "Grande salle de conférence adaptée aux présentations et aux séminaires. Équipée d'un vidéoprojecteur haute définition, d'un système audio et d'un grand tableau blanc. Parfaite pour les soutenances de projets ou les réunions importantes."
-    },
-    {
-        id: 4,
-        name: 'Laboratoire informatique D1',
-        type: 'Informatique',
-        capacity: 8,
-        dimension: 24,
-        floor: 'Rez-de-chaussée, aile Nord',
-        features: ['wifi', 'computer', 'projector'],
-        popular: false,
-        imageUrl: '/api/placeholder/400/250?text=Salle+D1',
-        description:
-            "Salle informatique équipée de 8 postes de travail performants avec les principaux logiciels professionnels installés. Idéale pour les cours d'informatique, les ateliers de programmation ou les sessions de recherche nécessitant des ressources informatiques."
-    },
-    {
-        id: 5,
-        name: 'Espace créatif E1',
-        type: 'Multimédia',
-        capacity: 6,
-        dimension: 20,
-        floor: '3ème étage, aile Sud',
-        features: ['wifi', 'computer', 'whiteboard'],
-        popular: true,
-        imageUrl: '/api/placeholder/400/250?text=Salle+E1',
-        description:
-            "Espace créatif conçu pour les projets multimédias et artistiques. Équipé d'ordinateurs avec logiciels de design et de montage, et d'un espace de travail modulable pour faciliter la collaboration et la créativité."
+const rooms = ref();
+
+const loadRooms = async () => {
+    loading.value = true;
+    try {
+        const api = (await import('@/services/api')).default;
+        const roomsData = await api.get('/rooms');
+
+        // Transformer les données pour notre interface
+        rooms.value = roomsData.map((room) => ({
+            id: room.id,
+            name: room.name,
+            type: room.type || 'Standard',
+            capacity: room.places,
+            dimension: room.dimension || 0,
+            floor: room.floor || 'Non spécifié',
+            features: room.features ? JSON.parse(room.features) : ['wifi'],
+            description: room.description || 'Aucune description disponible.',
+            imageUrl: room.image_url || '/api/placeholder/400/250?text=Salle',
+            popular: room.popular || false
+        }));
+    } catch (error) {
+        console.error('Erreur lors du chargement des salles:', error);
+        ElMessage({
+            type: 'error',
+            message: 'Impossible de charger les salles. Veuillez réessayer.'
+        });
+    } finally {
+        loading.value = false;
     }
-]);
+};
 
 // État du modal d'ajout/édition
 const roomModal = ref({
@@ -573,59 +541,91 @@ const handleImageChange = (file) => {
     reader.readAsDataURL(file.raw);
 };
 
-const saveRoom = () => {
-    roomFormRef.value.validate((valid) => {
-        if (valid) {
-            roomModal.value.loading = true;
+const saveRoom = async () => {
+    try {
+        await roomFormRef.value.validate();
+        roomModal.value.loading = true;
 
-            setTimeout(() => {
-                if (roomModal.value.isEdit) {
-                    // Mettre à jour la salle existante
-                    const index = rooms.value.findIndex(
-                        (room) => room.id === roomModal.value.form.id
-                    );
-                    if (index !== -1) {
-                        rooms.value[index] = { ...roomModal.value.form };
-                    }
+        const api = (await import('@/services/api')).default;
 
-                    ElMessage({
-                        type: 'success',
-                        message: 'Salle mise à jour avec succès'
-                    });
-                } else {
-                    // Ajouter une nouvelle salle
-                    const newRoom = {
-                        ...roomModal.value.form,
-                        id:
-                            rooms.value.length > 0
-                                ? Math.max(
-                                      ...rooms.value.map((room) => room.id)
-                                  ) + 1
-                                : 1
-                    };
+        // Préparer les données pour l'API
+        const roomData = {
+            name: roomModal.value.form.name,
+            type: roomModal.value.form.type,
+            places: roomModal.value.form.capacity,
+            dimension: roomModal.value.form.dimension,
+            floor: roomModal.value.form.floor,
+            features: JSON.stringify(roomModal.value.form.features),
+            description: roomModal.value.form.description,
+            image_url: roomModal.value.form.imageUrl,
+            popular: roomModal.value.form.popular
+        };
 
-                    rooms.value.push(newRoom);
+        if (roomModal.value.isEdit) {
+            // Mettre à jour la salle existante
+            await api.put(`/rooms/${roomModal.value.form.id}`, roomData);
 
-                    ElMessage({
-                        type: 'success',
-                        message: 'Salle ajoutée avec succès'
-                    });
-                }
+            ElMessage({
+                type: 'success',
+                message: 'Salle mise à jour avec succès'
+            });
+        } else {
+            // Ajouter une nouvelle salle
+            await api.post('/rooms', roomData);
 
-                roomModal.value.loading = false;
-                roomModal.value.visible = false;
-            }, 1000);
+            ElMessage({
+                type: 'success',
+                message: 'Salle ajoutée avec succès'
+            });
         }
-    });
+
+        // Recharger les salles
+        await loadRooms();
+        roomModal.value.visible = false;
+    } catch (error) {
+        console.error('Erreur lors de la sauvegarde de la salle:', error);
+
+        ElMessage({
+            type: 'error',
+            message:
+                error.message || 'Une erreur est survenue lors de la sauvegarde'
+        });
+    } finally {
+        roomModal.value.loading = false;
+    }
 };
 
-const viewReservations = (room) => {
-    // Action pour voir les réservations de cette salle
-    // À implémenter selon vos besoins
-    ElMessage({
-        type: 'info',
-        message: `Affichage des réservations pour ${room.name}`
-    });
+const viewReservations = async (room) => {
+    try {
+        const api = (await import('@/services/api')).default;
+        const reservations = await api.get('/reservation/rooms');
+
+        const roomReservations = reservations.filter(
+            (r) => r.room_id === room.id
+        );
+
+        if (roomReservations.length === 0) {
+            ElMessage({
+                type: 'info',
+                message: `Aucune réservation pour la salle "${room.name}"`
+            });
+        } else {
+            // Afficher une notification avec le nombre de réservations
+            ElMessage({
+                type: 'success',
+                message: `${roomReservations.length} réservation(s) trouvée(s) pour "${room.name}"`
+            });
+        }
+    } catch (error) {
+        console.error(
+            'Erreur lors de la récupération des réservations:',
+            error
+        );
+        ElMessage({
+            type: 'error',
+            message: 'Impossible de récupérer les réservations'
+        });
+    }
 };
 
 const confirmDeleteRoom = (room) => {
@@ -637,26 +637,35 @@ const confirmDeleteRoom = (room) => {
     };
 };
 
-const deleteRoom = () => {
-    confirmDialog.value.loading = true;
+const deleteRoom = async () => {
+    try {
+        confirmDialog.value.loading = true;
 
-    setTimeout(() => {
-        const index = rooms.value.findIndex(
-            (room) => room.id === confirmDialog.value.roomId
-        );
+        const api = (await import('@/services/api')).default;
+        await api.delete(`/rooms/${confirmDialog.value.roomId}`);
 
-        if (index !== -1) {
-            rooms.value.splice(index, 1);
+        // Recharger les salles
+        await loadRooms();
 
-            ElMessage({
-                type: 'success',
-                message: 'Salle supprimée avec succès'
-            });
-        }
+        ElMessage({
+            type: 'success',
+            message: 'Salle supprimée avec succès'
+        });
 
         confirmDialog.value.loading = false;
         confirmDialog.value.visible = false;
-    }, 800);
+    } catch (error) {
+        console.error('Erreur lors de la suppression de la salle:', error);
+
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la suppression'
+        });
+
+        confirmDialog.value.loading = false;
+    }
 };
 </script>
 
