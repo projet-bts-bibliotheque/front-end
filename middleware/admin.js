@@ -15,7 +15,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
             const api = (await import('@/services/api')).default;
             const userData = await api.get('/me');
 
-            if (userData.role < 1) {
+            if (userData.role < 0) {
                 // Pas les droits suffisants
                 return navigateTo('/');
             }

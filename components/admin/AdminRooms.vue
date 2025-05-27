@@ -243,25 +243,23 @@ const loadRooms = async () => {
     loading.value = true;
     try {
         const api = (await import('@/services/api')).default;
-        const roomsData = await api.rooms.getAll();
+        const roomsData = await api.get('/rooms');
 
-        // Transformer les données pour notre interface
+        // Adapte selon les vrais noms de colonnes de ta DB :
         rooms.value = roomsData.map((room) => ({
             id: room.id,
-            name: room.name,
-            capacity: room.places || 1
+            name: room.room_name || room.name || 'Nom inconnu', // ← Adapte selon ta colonne
+            capacity: room.places || room.capacity || 1
         }));
     } catch (error) {
         console.error('Erreur lors du chargement des salles:', error);
-        ElMessage({
-            type: 'error',
-            message: 'Impossible de charger les salles. Veuillez réessayer.'
-        });
+        ElMessage.error(
+            'Impossible de charger les salles. Veuillez réessayer.'
+        );
     } finally {
         loading.value = false;
     }
 };
-
 onMounted(async () => {
     await loadRooms();
 });
@@ -337,38 +335,26 @@ const saveRoom = async () => {
 
         const api = (await import('@/services/api')).default;
 
+        const roomData = {
+            name: roomModal.value.form.name,
+            places: roomModal.value.form.capacity
+        };
+
         if (roomModal.value.isEdit) {
-            // Mettre à jour la salle existante
-            await api.rooms.update(
-                roomModal.value.form.id,
-                roomModal.value.form
-            );
-
-            ElMessage({
-                type: 'success',
-                message: 'Salle mise à jour avec succès'
-            });
+            await api.put(`/rooms/${roomModal.value.form.id}`, roomData);
+            ElMessage.success('Salle mise à jour avec succès');
         } else {
-            // Ajouter une nouvelle salle
-            await api.rooms.create(roomModal.value.form);
-
-            ElMessage({
-                type: 'success',
-                message: 'Salle ajoutée avec succès'
-            });
+            await api.post('/rooms', roomData);
+            ElMessage.success('Salle ajoutée avec succès');
         }
 
-        // Recharger les salles
         await loadRooms();
         roomModal.value.visible = false;
     } catch (error) {
         console.error('Erreur lors de la sauvegarde de la salle:', error);
-
-        ElMessage({
-            type: 'error',
-            message:
-                error.message || 'Une erreur est survenue lors de la sauvegarde'
-        });
+        ElMessage.error(
+            error.message || 'Une erreur est survenue lors de la sauvegarde'
+        );
     } finally {
         roomModal.value.loading = false;
     }
@@ -420,9 +406,8 @@ const deleteRoom = async () => {
         confirmDialog.value.loading = true;
 
         const api = (await import('@/services/api')).default;
-        await api.rooms.delete(confirmDialog.value.roomId);
+        await api.delete(`/rooms/${confirmDialog.value.roomId}`);
 
-        // Recharger les salles
         await loadRooms();
 
         ElMessage({

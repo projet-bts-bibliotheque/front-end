@@ -466,6 +466,23 @@ const paginatedBooks = computed(() => {
     return filteredBooks.value.slice(startIndex, startIndex + pageSize.value);
 });
 
+const loadAuthorsAndEditors = async () => {
+    try {
+        const api = (await import('@/services/api')).default;
+
+        const [authorsData, editorsData] = await Promise.all([
+            api.get('/authors'),
+            api.get('/editors')
+        ]);
+
+        authors.value = authorsData;
+        editors.value = editorsData;
+    } catch (error) {
+        console.error('Erreur lors du chargement des auteurs/éditeurs:', error);
+        ElMessage.error('Impossible de charger les auteurs et éditeurs');
+    }
+};
+
 // Chargement des données
 const loadBooks = async () => {
     loading.value = true;
@@ -474,9 +491,9 @@ const loadBooks = async () => {
 
         // Récupérer les livres, auteurs et éditeurs
         const [booksData, authorsData, editorsData] = await Promise.all([
-            api.books.getAll(),
-            api.authors.getAll(),
-            api.editors.getAll()
+            api.get('/books'),
+            api.get('/authors'),
+            api.get('/editors')
         ]);
 
         // Stocker les listes d'auteurs et d'éditeurs
@@ -564,7 +581,12 @@ const handleCurrentChange = (val) => {
     currentPage.value = val;
 };
 
-const openAddBookModal = () => {
+const openAddBookModal = async () => {
+    // Charger les auteurs et éditeurs si pas encore fait
+    if (authors.value.length === 0 || editors.value.length === 0) {
+        await loadAuthorsAndEditors();
+    }
+
     bookModal.value.isEdit = false;
     bookModal.value.form = {
         isbn: '',
@@ -581,8 +603,12 @@ const openAddBookModal = () => {
     };
     bookModal.value.visible = true;
 };
+const editBook = async (book) => {
+    // Charger les auteurs et éditeurs si pas encore fait
+    if (authors.value.length === 0 || editors.value.length === 0) {
+        await loadAuthorsAndEditors();
+    }
 
-const editBook = (book) => {
     bookModal.value.isEdit = true;
     bookModal.value.form = {
         isbn: book.isbn,
@@ -599,7 +625,6 @@ const editBook = (book) => {
     };
     bookModal.value.visible = true;
 };
-
 const closeBookModal = () => {
     bookModal.value.visible = false;
 };
@@ -611,25 +636,32 @@ const saveBook = async () => {
 
         const api = (await import('@/services/api')).default;
 
+        const bookData = {
+            isbn: bookModal.value.form.isbn,
+            title: bookModal.value.form.title,
+            thumbnail:
+                bookModal.value.form.coverUrl || '/api/placeholder/150/220', // ← Ajout d'une valeur par défaut
+            author: bookModal.value.form.authorId,
+            editor: bookModal.value.form.editorId,
+            average_rating: bookModal.value.form.rating || 0,
+            ratings_count: 0,
+            keyword: [bookModal.value.form.category || 'non-catégorisé'], // ← Valeur par défaut
+            summary: bookModal.value.form.description || '', // ← Valeur par défaut
+            publish_year: bookModal.value.form.year,
+            pages: bookModal.value.form.pages || 0, // ← Ajout du champ pages
+            language: bookModal.value.form.language || 'Français' // to remove
+        };
+
+        console.log('📤 Données envoyées:', bookData); // Pour debug
+
         if (bookModal.value.isEdit) {
             // Mettre à jour le livre existant
-            await api.books.update(
-                bookModal.value.form.isbn,
-                bookModal.value.form
-            );
-
-            ElMessage({
-                type: 'success',
-                message: 'Livre mis à jour avec succès'
-            });
+            await api.put(`/books/${bookModal.value.form.isbn}`, bookData);
+            ElMessage.success('Livre mis à jour avec succès');
         } else {
             // Ajouter un nouveau livre
-            await api.books.create(bookModal.value.form);
-
-            ElMessage({
-                type: 'success',
-                message: 'Livre ajouté avec succès'
-            });
+            await api.post('/books', bookData);
+            ElMessage.success('Livre ajouté avec succès');
         }
 
         // Recharger les livres
@@ -637,12 +669,9 @@ const saveBook = async () => {
         bookModal.value.visible = false;
     } catch (error) {
         console.error('Erreur lors de la sauvegarde du livre:', error);
-
-        ElMessage({
-            type: 'error',
-            message:
-                error.message || 'Une erreur est survenue lors de la sauvegarde'
-        });
+        ElMessage.error(
+            error.message || 'Une erreur est survenue lors de la sauvegarde'
+        );
     } finally {
         bookModal.value.loading = false;
     }
@@ -699,9 +728,13 @@ const confirmDeleteBook = (book) => {
 const deleteBook = async () => {
     try {
         confirmDialog.value.loading = true;
+        console.log(
+            'log: Suppression du livre avec ID/isbn:',
+            confirmDialog.value.bookId
+        );
 
         const api = (await import('@/services/api')).default;
-        await api.books.delete(confirmDialog.value.bookId);
+        await api.delete(`/books/${confirmDialog.value.bookId}`);
 
         // Recharger les livres
         await loadBooks();

@@ -121,11 +121,20 @@ const emit = defineEmits(['update:searchQuery', 'showLogin', 'logout']);
 const route = useRoute();
 const activeIndex = ref('/');
 
-const isAdmin = computed(() => {
-    return props.currentUser.role >= 2; // Vérifie si l'utilisateur est admin
+const isAdmin = computed(async () => {
+    //il faut aller chercher le rôle via l'api
+    const api = (await import('@/services/api')).default;
+    const me = api.auth.me();
+    if (!me) {
+        return false;
+    }
+    if (me.role < 1) {
+        return true;
+    }
 });
+console.log('isAdmin', isAdmin.value);
 const isLibrarian = computed(() => {
-    return props.currentUser.role >= 1; // Vérifie si l'utilisateur est bibliothécaire
+    //il faut aller chercher le rôle via l'api
 });
 onMounted(() => {
     // Mettre à jour l'index actif en fonction de la route

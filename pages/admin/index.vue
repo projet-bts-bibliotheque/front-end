@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import AdminEditors from '~/components/admin/AdminEditors.vue';
+import AdminAuthors from '~/components/admin/AdminAuthors.vue';
 import AdminDashboard from '~/components/admin/AdminDashboard.vue';
 import AdminBooks from '~/components/admin/AdminBooks.vue';
 import AdminRooms from '~/components/admin/AdminRooms.vue';
@@ -32,12 +34,6 @@ const loading = ref(true);
 // Computed properties pour les permissions
 const isAdmin = computed(() => currentUser.value.role >= 2);
 const isLibrarian = computed(() => currentUser.value.role >= 1);
-
-const canManageBooks = computed(() => isLibrarian.value);
-const canManageRooms = computed(() => isLibrarian.value);
-const canManageUsers = computed(() => isAdmin.value);
-const canManageBorrows = computed(() => isLibrarian.value);
-const canManageReservations = computed(() => isLibrarian.value);
 
 // Chargement des données utilisateur
 const loadCurrentUser = async () => {
@@ -127,22 +123,26 @@ const roleLabels = {
                 </el-tab-pane>
 
                 <!-- Gestion des livres -->
-                <el-tab-pane label="Livres" name="books" v-if="canManageBooks">
+                <el-tab-pane label="Livres" name="books">
                     <AdminBooks />
                 </el-tab-pane>
 
                 <!-- Gestion des salles -->
-                <el-tab-pane label="Salles" name="rooms" v-if="canManageRooms">
+                <el-tab-pane label="Salles" name="rooms">
                     <AdminRooms />
                 </el-tab-pane>
 
                 <!-- Gestion des utilisateurs -->
-                <el-tab-pane
-                    label="Utilisateurs"
-                    name="users"
-                    v-if="canManageUsers"
-                >
+                <el-tab-pane label="Utilisateurs" name="users">
                     <AdminUsers />
+                </el-tab-pane>
+                <!-- Gestion des Auteurs-->
+                <el-tab-pane label="Auteurs" name="authors">
+                    <AdminAuthors />
+                </el-tab-pane>
+                <!-- Gestion des Editeurs-->
+                <el-tab-pane label="Editeurs" name="editors">
+                    <AdminEditors />
                 </el-tab-pane>
 
                 <!-- Paramètres -->
