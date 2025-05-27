@@ -13,6 +13,15 @@
                     >Catalogue</el-menu-item
                 >
                 <el-menu-item index="/room" route="/room">Salles</el-menu-item>
+                <el-menu-item index="/admin" v-if="isAdmin" route="/admin"
+                    >Administration</el-menu-item
+                >
+                <el-menu-item
+                    index="/librarian"
+                    v-if="isLibrarian"
+                    route="/librarian"
+                    >Bibliothécaire</el-menu-item
+                >
             </el-menu>
         </div>
         <div class="search-container">
@@ -112,6 +121,12 @@ const emit = defineEmits(['update:searchQuery', 'showLogin', 'logout']);
 const route = useRoute();
 const activeIndex = ref('/');
 
+const isAdmin = computed(() => {
+    return props.currentUser.role >= 2; // Vérifie si l'utilisateur est admin
+});
+const isLibrarian = computed(() => {
+    return props.currentUser.role >= 1; // Vérifie si l'utilisateur est bibliothécaire
+});
 onMounted(() => {
     // Mettre à jour l'index actif en fonction de la route
     activeIndex.value = route.path;

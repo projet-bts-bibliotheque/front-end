@@ -4,8 +4,6 @@ import AdminDashboard from '~/components/admin/AdminDashboard.vue';
 import AdminBooks from '~/components/admin/AdminBooks.vue';
 import AdminRooms from '~/components/admin/AdminRooms.vue';
 import AdminUsers from '~/components/admin/AdminUsers.vue';
-import AdminBorrows from '~/components/admin/AdminBorrows.vue';
-import AdminReservations from '~/components/admin/AdminReservations.vue';
 import AdminSettings from '~/components/admin/AdminSettings.vue';
 import { useRouter } from 'vue-router';
 import { ElNotification } from 'element-plus';
@@ -145,24 +143,6 @@ const roleLabels = {
                     v-if="canManageUsers"
                 >
                     <AdminUsers />
-                </el-tab-pane>
-
-                <!-- Gestion des emprunts -->
-                <el-tab-pane
-                    label="Emprunts"
-                    name="borrows"
-                    v-if="canManageBorrows"
-                >
-                    <AdminBorrows />
-                </el-tab-pane>
-
-                <!-- Gestion des réservations -->
-                <el-tab-pane
-                    label="Réservations"
-                    name="reservations"
-                    v-if="canManageReservations"
-                >
-                    <AdminReservations />
                 </el-tab-pane>
 
                 <!-- Paramètres -->

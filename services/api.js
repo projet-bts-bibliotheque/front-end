@@ -152,7 +152,7 @@ export default {
             return this.get(`/books/${id}`);
         },
         create(bookData) {
-            return this.post('/books', bookData);
+            // return this.post('/books', bookData);
         },
         update(id, bookData) {
             return this.put(`/books/${id}`, bookData);
