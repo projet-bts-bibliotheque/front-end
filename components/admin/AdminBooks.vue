@@ -66,7 +66,7 @@
             <el-table-column prop="author" label="Auteur" sortable />
             <el-table-column prop="category" label="Catégorie" sortable>
                 <template #default="scope">
-                    {{ getCategoryLabel(scope.row.category) }}
+                    {{ formatCategory(scope.row.category) }}
                 </template>
             </el-table-column>
             <el-table-column prop="year" label="Année" sortable width="100" />
@@ -154,11 +154,20 @@
                             placeholder="Titre du livre"
                         />
                     </el-form-item>
-                    <el-form-item label="Auteur" prop="author">
-                        <el-input
-                            v-model="bookModal.form.author"
-                            placeholder="Nom de l'auteur"
-                        />
+                    <el-form-item label="Auteur" prop="authorId">
+                        <el-select
+                            v-model="bookModal.form.authorId"
+                            placeholder="Sélectionner un auteur"
+                            style="width: 100%"
+                            filterable
+                        >
+                            <el-option
+                                v-for="author in authors"
+                                :key="author.id"
+                                :label="`${author.firstname} ${author.lastname}`"
+                                :value="author.id"
+                            />
+                        </el-select>
                     </el-form-item>
                 </div>
 
@@ -199,22 +208,39 @@
                         <el-input
                             v-model="bookModal.form.isbn"
                             placeholder="ISBN du livre"
+                            :disabled="bookModal.isEdit"
                         />
                     </el-form-item>
                 </div>
 
                 <div class="form-row">
+                    <el-form-item label="Éditeur" prop="editorId">
+                        <el-select
+                            v-model="bookModal.form.editorId"
+                            placeholder="Sélectionner un éditeur"
+                            style="width: 100%"
+                            filterable
+                        >
+                            <el-option
+                                v-for="editor in editors"
+                                :key="editor.id"
+                                :label="editor.name"
+                                :value="editor.id"
+                            />
+                        </el-select>
+                    </el-form-item>
                     <el-form-item label="Langue" prop="language">
-                        <el-input
+                        <el-select
                             v-model="bookModal.form.language"
                             placeholder="Langue du livre"
-                        />
-                    </el-form-item>
-                    <el-form-item label="Éditeur" prop="publisher">
-                        <el-input
-                            v-model="bookModal.form.publisher"
-                            placeholder="Nom de l'éditeur"
-                        />
+                            style="width: 100%"
+                        >
+                            <el-option label="Français" value="Français" />
+                            <el-option label="Anglais" value="Anglais" />
+                            <el-option label="Espagnol" value="Espagnol" />
+                            <el-option label="Italien" value="Italien" />
+                            <el-option label="Allemand" value="Allemand" />
+                        </el-select>
                     </el-form-item>
                 </div>
 
@@ -227,46 +253,17 @@
                     />
                 </el-form-item>
 
-                <el-form-item label="Couverture">
-                    <div class="cover-uploader">
-                        <el-image
-                            v-if="bookModal.form.coverUrl"
-                            :src="bookModal.form.coverUrl"
-                            fit="cover"
-                            style="
-                                width: 150px;
-                                height: 200px;
-                                margin-right: 20px;
-                            "
-                        />
-                        <!-- <el-upload
-                            class="cover-upload-button"
-                            action="#"
-                            :auto-upload="false"
-                            :show-file-list="false"
-                            :on-change="handleCoverChange"
-                        >
-                            <el-button type="primary">
-                                {{
-                                    bookModal.form.coverUrl
-                                        ? 'Changer la couverture'
-                                        : 'Ajouter une couverture'
-                                }}
-                            </el-button>
-                        </el-upload> -->
-                        <el-input
-                            v-model="bookModal.form.coverUrl"
-                            placeholder="URL de la couverture"
-                            style="width: 100%"
-                        />
-                    </div>
-                </el-form-item>
-
-                <el-form-item label="Disponibilité">
-                    <el-switch
-                        v-model="bookModal.form.available"
-                        active-text="Disponible"
-                        inactive-text="Indisponible"
+                <el-form-item label="URL de la couverture">
+                    <el-input
+                        v-model="bookModal.form.coverUrl"
+                        placeholder="URL de l'image de couverture"
+                        style="width: 100%"
+                    />
+                    <el-image
+                        v-if="bookModal.form.coverUrl"
+                        :src="bookModal.form.coverUrl"
+                        fit="cover"
+                        style="width: 150px; height: 200px; margin-top: 10px"
                     />
                 </el-form-item>
             </el-form>
@@ -317,7 +314,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import {
     Plus,
     Edit,
@@ -351,7 +348,7 @@ const categories = [
     { value: 'informatique', label: 'Informatique' }
 ];
 
-// Données des livres
+// Données
 const books = ref([]);
 const authors = ref([]);
 const editors = ref([]);
@@ -362,18 +359,17 @@ const bookModal = ref({
     isEdit: false,
     loading: false,
     form: {
-        id: null,
+        isbn: '',
         title: '',
-        author: '',
+        authorId: null,
+        editorId: null,
         category: '',
         pages: 0,
         year: new Date().getFullYear(),
-        isbn: '',
         language: 'Français',
-        publisher: '',
         description: '',
         coverUrl: '',
-        available: true
+        rating: 0
     }
 });
 
@@ -397,11 +393,18 @@ const bookValidationRules = {
             trigger: 'blur'
         }
     ],
-    author: [
+    authorId: [
         {
             required: true,
-            message: "Veuillez saisir le nom de l'auteur",
-            trigger: 'blur'
+            message: 'Veuillez sélectionner un auteur',
+            trigger: 'change'
+        }
+    ],
+    editorId: [
+        {
+            required: true,
+            message: 'Veuillez sélectionner un éditeur',
+            trigger: 'change'
         }
     ],
     category: [
@@ -409,6 +412,13 @@ const bookValidationRules = {
             required: true,
             message: 'Veuillez sélectionner une catégorie',
             trigger: 'change'
+        }
+    ],
+    isbn: [
+        {
+            required: true,
+            message: "Veuillez saisir l'ISBN",
+            trigger: 'blur'
         }
     ],
     year: [
@@ -450,6 +460,13 @@ const filteredBooks = computed(() => {
     return result;
 });
 
+// Livres paginés
+const paginatedBooks = computed(() => {
+    const startIndex = (currentPage.value - 1) * pageSize.value;
+    return filteredBooks.value.slice(startIndex, startIndex + pageSize.value);
+});
+
+// Chargement des données
 const loadBooks = async () => {
     loading.value = true;
     try {
@@ -457,19 +474,19 @@ const loadBooks = async () => {
 
         // Récupérer les livres, auteurs et éditeurs
         const [booksData, authorsData, editorsData] = await Promise.all([
-            api.get('/books'),
-            api.get('/authors'),
-            api.get('/editors')
+            api.books.getAll(),
+            api.authors.getAll(),
+            api.editors.getAll()
         ]);
 
-        // Stocker les listes d'auteurs et d'éditeurs pour le formulaire
+        // Stocker les listes d'auteurs et d'éditeurs
         authors.value = authorsData;
         editors.value = editorsData;
 
         // Vérifier quels livres sont actuellement empruntés
         let borrowedBooks = [];
         try {
-            const reservations = await api.get('/reservation/books');
+            const reservations = await api.bookReservations.getAll();
             borrowedBooks = reservations
                 .filter((r) => !r.return_date)
                 .map((r) => r.book_id);
@@ -484,23 +501,24 @@ const loadBooks = async () => {
 
             return {
                 id: book.id,
+                isbn: book.isbn,
                 title: book.title,
                 author: author
                     ? `${author.firstname} ${author.lastname}`
                     : 'Auteur inconnu',
                 authorId: book.author,
+                editor: editor ? editor.name : 'Éditeur inconnu',
+                editorId: book.editor,
                 rating: book.average_rating || 0,
+                ratingsCount: book.ratings_count || 0,
                 coverUrl: book.thumbnails || '/api/placeholder/150/220',
                 available: !borrowedBooks.includes(book.isbn),
                 category: Array.isArray(book.keyword)
-                    ? book.keyword.join(', ')
+                    ? book.keyword[0] || 'non-catégorisé'
                     : book.keyword || 'non-catégorisé',
                 pages: book.pages || 0,
                 year: book.publish_year || 0,
-                isbn: book.isbn,
                 language: book.language || 'Français',
-                publisher: editor ? editor.name : 'Éditeur inconnu',
-                editorId: book.editor,
                 description: book.summary || ''
             };
         });
@@ -520,14 +538,8 @@ onMounted(async () => {
     await loadBooks();
 });
 
-// Livres paginés
-const paginatedBooks = computed(() => {
-    const startIndex = (currentPage.value - 1) * pageSize.value;
-    return filteredBooks.value.slice(startIndex, startIndex + pageSize.value);
-});
-
-// Fonctions
-const getCategoryLabel = (categoryValue) => {
+// Fonctions utilitaires
+const formatCategory = (categoryValue) => {
     const category = categories.find((c) => c.value === categoryValue);
     return category ? category.label : categoryValue;
 };
@@ -555,39 +567,41 @@ const handleCurrentChange = (val) => {
 const openAddBookModal = () => {
     bookModal.value.isEdit = false;
     bookModal.value.form = {
-        id: null,
+        isbn: '',
         title: '',
-        author: '',
+        authorId: null,
+        editorId: null,
         category: '',
         pages: 0,
         year: new Date().getFullYear(),
-        isbn: '',
         language: 'Français',
-        publisher: '',
         description: '',
         coverUrl: '',
-        available: true
+        rating: 0
     };
     bookModal.value.visible = true;
 };
 
 const editBook = (book) => {
     bookModal.value.isEdit = true;
-    bookModal.value.form = { ...book };
+    bookModal.value.form = {
+        isbn: book.isbn,
+        title: book.title,
+        authorId: book.authorId,
+        editorId: book.editorId,
+        category: book.category,
+        pages: book.pages,
+        year: book.year,
+        language: book.language,
+        description: book.description,
+        coverUrl: book.coverUrl,
+        rating: book.rating
+    };
     bookModal.value.visible = true;
 };
 
 const closeBookModal = () => {
     bookModal.value.visible = false;
-};
-
-const handleCoverChange = (file) => {
-    // Simuler le chargement d'une image
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        bookModal.value.form.coverUrl = e.target.result;
-    };
-    reader.readAsDataURL(file.raw);
 };
 
 const saveBook = async () => {
@@ -597,27 +611,12 @@ const saveBook = async () => {
 
         const api = (await import('@/services/api')).default;
 
-        // Préparer les données pour l'API
-        const bookData = {
-            isbn: bookModal.value.form.isbn,
-            title: bookModal.value.form.title,
-            author: getAuthorIdByName(bookModal.value.form.author),
-            editor: getEditorIdByName(bookModal.value.form.publisher),
-            thumbnails: bookModal.value.form.coverUrl,
-            average_rating: bookModal.value.form.rating || 0,
-            ratings_count: 0,
-            keyword: bookModal.value.form.category
-                ? [bookModal.value.form.category]
-                : [],
-            summary: bookModal.value.form.description,
-            publish_year: bookModal.value.form.year,
-            pages: bookModal.value.form.pages,
-            language: bookModal.value.form.language
-        };
-
         if (bookModal.value.isEdit) {
             // Mettre à jour le livre existant
-            await api.put(`/books/${bookModal.value.form.isbn}`, bookData);
+            await api.books.update(
+                bookModal.value.form.isbn,
+                bookModal.value.form
+            );
 
             ElMessage({
                 type: 'success',
@@ -625,7 +624,7 @@ const saveBook = async () => {
             });
         } else {
             // Ajouter un nouveau livre
-            await api.post('/books', bookData);
+            await api.books.create(bookModal.value.form);
 
             ElMessage({
                 type: 'success',
@@ -656,34 +655,20 @@ const toggleBookAvailability = async (book) => {
 
         if (book.available) {
             // Si le livre est disponible, créer une réservation fictive pour le rendre indisponible
-            await api.post('/reservation/books', { book_id: book.isbn });
+            await api.bookReservations.create(book.isbn);
 
             ElMessage({
                 type: 'success',
                 message: `Le livre "${book.title}" est maintenant indisponible`
             });
         } else {
-            // Si indisponible, trouver la réservation active et la marquer comme retournée
-            const reservations = await api.get('/reservation/books');
-            const activeReservation = reservations.find(
-                (r) => r.book_id === book.isbn && !r.return_date
-            );
+            // Si indisponible, marquer comme retourné
+            await api.bookReservations.return(book.isbn);
 
-            if (activeReservation) {
-                await api.post('/reservation/books/return', {
-                    book_id: book.isbn
-                });
-
-                ElMessage({
-                    type: 'success',
-                    message: `Le livre "${book.title}" est maintenant disponible`
-                });
-            } else {
-                ElMessage({
-                    type: 'warning',
-                    message: `Impossible de trouver une réservation active pour ce livre`
-                });
-            }
+            ElMessage({
+                type: 'success',
+                message: `Le livre "${book.title}" est maintenant disponible`
+            });
         }
 
         // Recharger les livres
@@ -706,7 +691,7 @@ const confirmDeleteBook = (book) => {
     confirmDialog.value = {
         visible: true,
         message: `Êtes-vous sûr de vouloir supprimer le livre "${book.title}" ?`,
-        bookId: book.id,
+        bookId: book.isbn,
         loading: false
     };
 };
@@ -716,17 +701,7 @@ const deleteBook = async () => {
         confirmDialog.value.loading = true;
 
         const api = (await import('@/services/api')).default;
-
-        // Trouver l'ISBN du livre à supprimer
-        const bookToDelete = books.value.find(
-            (book) => book.id === confirmDialog.value.bookId
-        );
-        if (!bookToDelete) {
-            throw new Error('Livre introuvable');
-        }
-
-        // Supprimer le livre en utilisant son ISBN
-        await api.delete(`/books/${bookToDelete.isbn}`);
+        await api.books.delete(confirmDialog.value.bookId);
 
         // Recharger les livres
         await loadBooks();
@@ -750,43 +725,6 @@ const deleteBook = async () => {
 
         confirmDialog.value.loading = false;
     }
-};
-
-// Fonction utilitaire pour obtenir l'ID d'un auteur à partir de son nom complet
-const getAuthorIdByName = (fullName) => {
-    if (!fullName || !authors.value || authors.value.length === 0) return null;
-
-    // Séparer le nom complet en prénom et nom
-    const parts = fullName.split(' ');
-    let firstName = '';
-    let lastName = '';
-
-    if (parts.length >= 2) {
-        firstName = parts[0];
-        lastName = parts.slice(1).join(' ');
-    } else {
-        lastName = fullName;
-    }
-
-    // Rechercher l'auteur qui correspond le mieux
-    const author = authors.value.find(
-        (a) =>
-            (a.firstname.toLowerCase() === firstName.toLowerCase() ||
-                firstName === '') &&
-            a.lastname.toLowerCase() === lastName.toLowerCase()
-    );
-
-    return author ? author.id : null;
-};
-// Fonction utilitaire pour obtenir l'ID d'un éditeur à partir de son nom
-const getEditorIdByName = (name) => {
-    if (!name || !editors.value || editors.value.length === 0) return null;
-
-    const editor = editors.value.find(
-        (e) => e.name.toLowerCase() === name.toLowerCase()
-    );
-
-    return editor ? editor.id : null;
 };
 </script>
 
@@ -843,11 +781,6 @@ const getEditorIdByName = (name) => {
 .form-row .el-form-item {
     flex: 1;
     margin-bottom: 0;
-}
-
-.cover-uploader {
-    display: flex;
-    align-items: center;
 }
 
 .confirm-dialog-content {

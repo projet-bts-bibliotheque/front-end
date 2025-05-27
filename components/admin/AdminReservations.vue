@@ -532,6 +532,75 @@ const reservationValidationRules = {
     ]
 };
 
+// Chargement des données
+const loadReservations = async () => {
+    loading.value = true;
+    try {
+        const api = (await import('@/services/api')).default;
+
+        // Récupérer les réservations, salles et utilisateurs
+        const [reservationsData, roomsData, usersData] = await Promise.all([
+            api.roomReservations.getAll(),
+            api.rooms.getAll(),
+            api.users.getAll()
+        ]);
+
+        rooms.value = roomsData;
+        users.value = usersData.map((user) => ({
+            id: user.id,
+            name: `${user.first_name} ${user.last_name}`,
+            email: user.email
+        }));
+
+        // Transformer les données des réservations
+        reservations.value = reservationsData.map((reservation) => {
+            const room = roomsData.find((r) => r.id === reservation.room_id);
+            const user = usersData.find((u) => u.id === reservation.user_id);
+
+            // Déterminer le statut basé sur la date
+            const reservationDate = new Date(reservation.date);
+            const now = new Date();
+            let status = 'upcoming';
+
+            if (reservationDate < now) {
+                status = 'completed';
+            } else if (Math.abs(reservationDate - now) < 24 * 60 * 60 * 1000) {
+                status = 'ongoing';
+            }
+
+            return {
+                id: reservation.id,
+                roomId: reservation.room_id,
+                roomName: room ? room.name : 'Salle inconnue',
+                userId: reservation.user_id,
+                userName: user
+                    ? `${user.first_name} ${user.last_name}`
+                    : 'Utilisateur inconnu',
+                date: reservationDate.toLocaleDateString('fr-FR'),
+                dateTime: reservation.date,
+                status: status,
+                participants: 1, // Par défaut
+                purpose: 'study', // Par défaut
+                comment: ''
+            };
+        });
+    } catch (error) {
+        console.error('Erreur lors du chargement des réservations:', error);
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Impossible de charger les réservations. Veuillez réessayer.'
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+onMounted(async () => {
+    await loadReservations();
+});
+
 // Réservations filtrées selon les critères de recherche
 const filteredReservations = computed(() => {
     let result = [...reservations.value];

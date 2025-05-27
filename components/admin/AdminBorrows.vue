@@ -87,15 +87,6 @@
                             <el-icon><Check /></el-icon>
                         </el-button>
                         <el-button
-                            type="primary"
-                            size="small"
-                            @click="extendBorrow(scope.row)"
-                            title="Prolonger l'emprunt"
-                            :disabled="scope.row.status === 'returned'"
-                        >
-                            <el-icon><Timer /></el-icon>
-                        </el-button>
-                        <el-button
                             type="info"
                             size="small"
                             @click="sendReminder(scope.row)"
@@ -146,16 +137,13 @@
                     <el-select
                         v-model="borrowModal.form.userId"
                         filterable
-                        remote
                         placeholder="Rechercher un utilisateur..."
-                        :remote-method="searchUsers"
-                        :loading="borrowModal.userSearchLoading"
                         style="width: 100%"
                     >
                         <el-option
-                            v-for="user in borrowModal.userOptions"
+                            v-for="user in users"
                             :key="user.id"
-                            :label="user.name"
+                            :label="`${user.name} (${user.email})`"
                             :value="user.id"
                         />
                     </el-select>
@@ -165,71 +153,18 @@
                     <el-select
                         v-model="borrowModal.form.bookId"
                         filterable
-                        remote
                         placeholder="Rechercher un livre..."
-                        :remote-method="searchBooks"
-                        :loading="borrowModal.bookSearchLoading"
                         style="width: 100%"
                     >
                         <el-option
-                            v-for="book in borrowModal.bookOptions"
-                            :key="book.id"
-                            :label="book.title"
-                            :value="book.id"
-                        >
-                            <div class="book-option">
-                                <el-image
-                                    :src="book.coverUrl"
-                                    fit="cover"
-                                    style="
-                                        width: 40px;
-                                        height: 60px;
-                                        margin-right: 10px;
-                                        border-radius: 4px;
-                                    "
-                                />
-                                <div class="book-option-info">
-                                    <div class="book-option-title">
-                                        {{ book.title }}
-                                    </div>
-                                    <div class="book-option-author">
-                                        {{ book.author }}
-                                    </div>
-                                </div>
-                            </div>
-                        </el-option>
+                            v-for="book in availableBooks"
+                            :key="book.isbn"
+                            :label="`${book.title} - ${getAuthorName(
+                                book.author
+                            )}`"
+                            :value="book.isbn"
+                        />
                     </el-select>
-                </el-form-item>
-
-                <div class="form-row">
-                    <el-form-item label="Date d'emprunt" prop="borrowDate">
-                        <el-date-picker
-                            v-model="borrowModal.form.borrowDate"
-                            type="date"
-                            placeholder="Date d'emprunt"
-                            format="DD/MM/YYYY"
-                            style="width: 100%"
-                        />
-                    </el-form-item>
-                    <el-form-item label="Date de retour prévue" prop="dueDate">
-                        <el-date-picker
-                            v-model="borrowModal.form.dueDate"
-                            type="date"
-                            placeholder="Date de retour"
-                            format="DD/MM/YYYY"
-                            style="width: 100%"
-                            :disabled-date="disablePastDates"
-                        />
-                    </el-form-item>
-                </div>
-
-                <el-form-item label="Remarques" prop="notes">
-                    <el-input
-                        v-model="borrowModal.form.notes"
-                        type="textarea"
-                        rows="3"
-                        placeholder="Remarques concernant l'emprunt..."
-                    />
                 </el-form-item>
             </el-form>
 
@@ -279,12 +214,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import {
     Plus,
     Delete,
     Check,
-    Timer,
     Message,
     Search,
     WarningFilled
@@ -299,55 +233,19 @@ const dateRange = ref([]);
 const currentPage = ref(1);
 const pageSize = ref(10);
 
-// Données des livres (pour la recherche)
-const books = ref([{}]);
-
-// Données des utilisateurs (pour la recherche)
-const users = ref([
-    {
-        id: 1,
-        name: 'Admin Test',
-        email: 'admin@bibliotheque.fr'
-    },
-    {
-        id: 2,
-        name: 'Sophie Moreau',
-        email: 'sophie.moreau@email.com'
-    },
-    {
-        id: 3,
-        name: 'Thomas Laurent',
-        email: 'thomas.laurent@email.com'
-    },
-    {
-        id: 4,
-        name: 'Marie Martin',
-        email: 'marie.martin@email.com'
-    },
-    {
-        id: 5,
-        name: 'Paul Dupont',
-        email: 'paul.dupont@email.com'
-    }
-]);
-
-// Données des emprunts
-const borrows = ref([{}]);
+// Données
+const books = ref([]);
+const users = ref([]);
+const borrows = ref([]);
+const authors = ref([]);
 
 // État du modal d'ajout d'emprunt
 const borrowModal = ref({
     visible: false,
     loading: false,
-    userSearchLoading: false,
-    bookSearchLoading: false,
-    userOptions: [],
-    bookOptions: [],
     form: {
         userId: null,
-        bookId: null,
-        borrowDate: new Date(),
-        dueDate: new Date(new Date().setDate(new Date().getDate() + 14)), // +14 jours par défaut
-        notes: ''
+        bookId: null
     }
 });
 
@@ -377,22 +275,95 @@ const borrowValidationRules = {
             message: 'Veuillez sélectionner un livre',
             trigger: 'change'
         }
-    ],
-    borrowDate: [
-        {
-            required: true,
-            message: "Veuillez sélectionner la date d'emprunt",
-            trigger: 'change'
-        }
-    ],
-    dueDate: [
-        {
-            required: true,
-            message: 'Veuillez sélectionner la date de retour prévue',
-            trigger: 'change'
-        }
     ]
 };
+
+// Chargement des données
+const loadBorrows = async () => {
+    loading.value = true;
+    try {
+        const api = (await import('@/services/api')).default;
+
+        // Récupérer les emprunts, livres et utilisateurs
+        const [borrowsData, booksData, usersData, authorsData] =
+            await Promise.all([
+                api.bookReservations.getAll(),
+                api.books.getAll(),
+                api.users.getAll(),
+                api.authors.getAll()
+            ]);
+
+        books.value = booksData;
+        authors.value = authorsData;
+        users.value = usersData.map((user) => ({
+            id: user.id,
+            name: `${user.first_name} ${user.last_name}`,
+            email: user.email
+        }));
+
+        // Transformer les données des emprunts
+        borrows.value = borrowsData.map((borrow) => {
+            const book = booksData.find((b) => b.isbn === borrow.book_id);
+            const user = usersData.find((u) => u.id === borrow.user_id);
+
+            // Calculer le statut
+            let status = 'active';
+            if (borrow.return_date) {
+                status = 'returned';
+            } else {
+                const borrowDate = new Date(borrow.start);
+                const dueDate = new Date(borrowDate);
+                dueDate.setDate(dueDate.getDate() + 14); // 14 jours par défaut
+
+                if (new Date() > dueDate) {
+                    status = 'late';
+                }
+            }
+
+            return {
+                id: borrow.id,
+                bookId: borrow.book_id,
+                bookTitle: book ? book.title : 'Livre inconnu',
+                userId: borrow.user_id,
+                userName: user
+                    ? `${user.first_name} ${user.last_name}`
+                    : 'Utilisateur inconnu',
+                borrowDate: new Date(borrow.start).toLocaleDateString('fr-FR'),
+                dueDate: new Date(
+                    new Date(borrow.start).getTime() + 14 * 24 * 60 * 60 * 1000
+                ).toLocaleDateString('fr-FR'),
+                returnDate: borrow.return_date
+                    ? new Date(borrow.return_date).toLocaleDateString('fr-FR')
+                    : null,
+                status: status,
+                notes: borrow.notes || ''
+            };
+        });
+    } catch (error) {
+        console.error('Erreur lors du chargement des emprunts:', error);
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Impossible de charger les emprunts. Veuillez réessayer.'
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+onMounted(async () => {
+    await loadBorrows();
+});
+
+// Livres disponibles (non empruntés)
+const availableBooks = computed(() => {
+    const borrowedBookIds = borrows.value
+        .filter((b) => b.status !== 'returned')
+        .map((b) => b.bookId);
+
+    return books.value.filter((book) => !borrowedBookIds.includes(book.isbn));
+});
 
 // Emprunts filtrés selon les critères de recherche
 const filteredBorrows = computed(() => {
@@ -438,7 +409,7 @@ const paginatedBorrows = computed(() => {
     return filteredBorrows.value.slice(startIndex, startIndex + pageSize.value);
 });
 
-// Fonctions
+// Fonctions utilitaires
 const getBorrowStatusLabel = (status) => {
     switch (status) {
         case 'active':
@@ -465,8 +436,9 @@ const getBorrowStatusType = (status) => {
     }
 };
 
-const disablePastDates = (date) => {
-    return date < new Date(new Date().setHours(0, 0, 0, 0));
+const getAuthorName = (authorId) => {
+    const author = authors.value.find((a) => a.id === authorId);
+    return author ? `${author.firstname} ${author.lastname}` : 'Auteur inconnu';
 };
 
 const resetFilters = () => {
@@ -492,10 +464,7 @@ const handleCurrentChange = (val) => {
 const openNewBorrowModal = () => {
     borrowModal.value.form = {
         userId: null,
-        bookId: null,
-        borrowDate: new Date(),
-        dueDate: new Date(new Date().setDate(new Date().getDate() + 14)),
-        notes: ''
+        bookId: null
     };
     borrowModal.value.visible = true;
 };
@@ -504,182 +473,54 @@ const closeBorrowModal = () => {
     borrowModal.value.visible = false;
 };
 
-const searchUsers = (query) => {
-    borrowModal.value.userSearchLoading = true;
+const saveBorrow = async () => {
+    try {
+        await borrowFormRef.value.validate();
+        borrowModal.value.loading = true;
 
-    setTimeout(() => {
-        if (query) {
-            const search = query.toLowerCase();
-            borrowModal.value.userOptions = users.value
-                .filter(
-                    (user) =>
-                        user.name.toLowerCase().includes(search) ||
-                        user.email.toLowerCase().includes(search)
-                )
-                .map((user) => ({
-                    id: user.id,
-                    name: `${user.name} (${user.email})`
-                }));
-        } else {
-            borrowModal.value.userOptions = users.value.map((user) => ({
-                id: user.id,
-                name: `${user.name} (${user.email})`
-            }));
-        }
+        const api = (await import('@/services/api')).default;
+        await api.bookReservations.create(borrowModal.value.form.bookId);
 
-        borrowModal.value.userSearchLoading = false;
-    }, 500);
+        ElMessage({
+            type: 'success',
+            message: 'Emprunt créé avec succès'
+        });
+
+        // Recharger les données
+        await loadBorrows();
+        borrowModal.value.visible = false;
+    } catch (error) {
+        console.error("Erreur lors de la création de l'emprunt:", error);
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                "Une erreur est survenue lors de la création de l'emprunt"
+        });
+    } finally {
+        borrowModal.value.loading = false;
+    }
 };
 
-const searchBooks = (query) => {
-    borrowModal.value.bookSearchLoading = true;
-
-    setTimeout(() => {
-        if (query) {
-            const search = query.toLowerCase();
-            borrowModal.value.bookOptions = books.value
-                .filter(
-                    (book) =>
-                        book.available &&
-                        (book.title.toLowerCase().includes(search) ||
-                            book.author.toLowerCase().includes(search))
-                )
-                .map((book) => ({
-                    id: book.id,
-                    title: book.title,
-                    author: book.author,
-                    coverUrl: book.coverUrl
-                }));
-        } else {
-            borrowModal.value.bookOptions = books.value
-                .filter((book) => book.available)
-                .map((book) => ({
-                    id: book.id,
-                    title: book.title,
-                    author: book.author,
-                    coverUrl: book.coverUrl
-                }));
-        }
-
-        borrowModal.value.bookSearchLoading = false;
-    }, 500);
-};
-
-const saveBorrow = () => {
-    borrowFormRef.value.validate((valid) => {
-        if (valid) {
-            borrowModal.value.loading = true;
-
-            setTimeout(() => {
-                // Récupérer les informations du livre et de l'utilisateur
-                const book = books.value.find(
-                    (b) => b.id === borrowModal.value.form.bookId
-                );
-                const user = users.value.find(
-                    (u) => u.id === borrowModal.value.form.userId
-                );
-
-                if (book && user) {
-                    // Mettre à jour la disponibilité du livre
-                    const bookIndex = books.value.findIndex(
-                        (b) => b.id === book.id
-                    );
-                    if (bookIndex !== -1) {
-                        books.value[bookIndex] = { ...book, available: false };
-                    }
-
-                    // Ajouter le nouvel emprunt
-                    const newBorrow = {
-                        id:
-                            borrows.value.length > 0
-                                ? Math.max(...borrows.value.map((b) => b.id)) +
-                                  1
-                                : 1,
-                        bookId: book.id,
-                        bookTitle: book.title,
-                        userId: user.id,
-                        userName: user.name,
-                        borrowDate:
-                            borrowModal.value.form.borrowDate.toLocaleDateString(
-                                'fr-FR'
-                            ),
-                        dueDate:
-                            borrowModal.value.form.dueDate.toLocaleDateString(
-                                'fr-FR'
-                            ),
-                        status: 'active',
-                        notes: borrowModal.value.form.notes
-                    };
-
-                    borrows.value.push(newBorrow);
-
-                    ElMessage({
-                        type: 'success',
-                        message: 'Emprunt créé avec succès'
-                    });
-                }
-
-                borrowModal.value.loading = false;
-                borrowModal.value.visible = false;
-            }, 1000);
-        }
-    });
-};
-
-const markAsReturned = (borrow) => {
-    const borrowIndex = borrows.value.findIndex((b) => b.id === borrow.id);
-
-    if (borrowIndex !== -1) {
-        // Mettre à jour l'emprunt
-        const updatedBorrow = {
-            ...borrow,
-            status: 'returned',
-            returnDate: new Date().toLocaleDateString('fr-FR')
-        };
-
-        borrows.value[borrowIndex] = updatedBorrow;
-
-        // Rendre le livre à nouveau disponible
-        const bookIndex = books.value.findIndex((b) => b.id === borrow.bookId);
-
-        if (bookIndex !== -1) {
-            books.value[bookIndex] = {
-                ...books.value[bookIndex],
-                available: true
-            };
-        }
+const markAsReturned = async (borrow) => {
+    try {
+        const api = (await import('@/services/api')).default;
+        await api.bookReservations.return(borrow.bookId);
 
         ElMessage({
             type: 'success',
             message: `Le livre "${borrow.bookTitle}" a été retourné`
         });
-    }
-};
 
-const extendBorrow = (borrow) => {
-    const borrowIndex = borrows.value.findIndex((b) => b.id === borrow.id);
-
-    if (borrowIndex !== -1) {
-        // Prolonger la date de retour de 14 jours
-        const dueDateParts = borrow.dueDate.split('/');
-        const dueDate = new Date(
-            dueDateParts[2],
-            dueDateParts[1] - 1,
-            dueDateParts[0]
-        );
-        dueDate.setDate(dueDate.getDate() + 14);
-
-        const updatedBorrow = {
-            ...borrow,
-            dueDate: dueDate.toLocaleDateString('fr-FR'),
-            status: 'active' // Si c'était en retard, il ne l'est plus
-        };
-
-        borrows.value[borrowIndex] = updatedBorrow;
-
+        // Recharger les données
+        await loadBorrows();
+    } catch (error) {
+        console.error('Erreur lors du retour du livre:', error);
         ElMessage({
-            type: 'success',
-            message: `L'emprunt a été prolongé de 14 jours (nouvelle date de retour: ${updatedBorrow.dueDate})`
+            type: 'error',
+            message:
+                error.message ||
+                'Une erreur est survenue lors du retour du livre'
         });
     }
 };
@@ -701,41 +542,32 @@ const confirmDeleteBorrow = (borrow) => {
     };
 };
 
-const deleteBorrow = () => {
-    confirmDialog.value.loading = true;
+const deleteBorrow = async () => {
+    try {
+        confirmDialog.value.loading = true;
 
-    setTimeout(() => {
-        const index = borrows.value.findIndex(
-            (borrow) => borrow.id === confirmDialog.value.borrowId
-        );
+        const api = (await import('@/services/api')).default;
+        await api.bookReservations.delete(confirmDialog.value.borrowId);
 
-        if (index !== -1) {
-            const borrow = borrows.value[index];
-            borrows.value.splice(index, 1);
+        ElMessage({
+            type: 'success',
+            message: 'Emprunt supprimé avec succès'
+        });
 
-            // Si le livre n'est pas retourné, le rendre disponible
-            if (borrow.status !== 'returned') {
-                const bookIndex = books.value.findIndex(
-                    (b) => b.id === borrow.bookId
-                );
-
-                if (bookIndex !== -1) {
-                    books.value[bookIndex] = {
-                        ...books.value[bookIndex],
-                        available: true
-                    };
-                }
-            }
-
-            ElMessage({
-                type: 'success',
-                message: 'Emprunt supprimé avec succès'
-            });
-        }
-
+        // Recharger les données
+        await loadBorrows();
         confirmDialog.value.loading = false;
         confirmDialog.value.visible = false;
-    }, 800);
+    } catch (error) {
+        console.error("Erreur lors de la suppression de l'emprunt:", error);
+        ElMessage({
+            type: 'error',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la suppression'
+        });
+        confirmDialog.value.loading = false;
+    }
 };
 </script>
 
@@ -788,37 +620,6 @@ const deleteBorrow = () => {
     justify-content: flex-end;
 }
 
-.form-row {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.form-row .el-form-item {
-    flex: 1;
-    margin-bottom: 0;
-}
-
-.book-option {
-    display: flex;
-    align-items: center;
-}
-
-.book-option-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.book-option-title {
-    font-weight: 600;
-    color: #333;
-}
-
-.book-option-author {
-    font-size: 0.9rem;
-    color: #666;
-}
-
 .confirm-dialog-content {
     text-align: center;
     padding: 10px 0 20px;
@@ -845,11 +646,6 @@ const deleteBorrow = () => {
     .filter-select,
     .filter-date {
         width: 100%;
-    }
-
-    .form-row {
-        flex-direction: column;
-        gap: 0;
     }
 }
 </style>

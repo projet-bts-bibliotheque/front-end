@@ -19,21 +19,6 @@
             />
 
             <el-select
-                v-model="typeFilter"
-                placeholder="Type de salle"
-                clearable
-                @change="filterRooms"
-                class="filter-select"
-            >
-                <el-option
-                    v-for="type in roomTypes"
-                    :key="type.value"
-                    :label="type.label"
-                    :value="type.value"
-                />
-            </el-select>
-
-            <el-select
                 v-model="capacityFilter"
                 placeholder="Capacité minimale"
                 clearable
@@ -56,43 +41,17 @@
             stripe
             border
         >
-            <el-table-column label="Image" width="120">
-                <template #default="scope">
-                    <el-image
-                        style="width: 80px; height: 50px; border-radius: 4px"
-                        :src="scope.row.imageUrl"
-                        fit="cover"
-                        :preview-src-list="[scope.row.imageUrl]"
-                    />
-                </template>
-            </el-table-column>
             <el-table-column prop="name" label="Nom" sortable />
-            <el-table-column prop="type" label="Type" sortable />
             <el-table-column
                 prop="capacity"
                 label="Capacité"
                 sortable
-                width="100"
+                width="120"
             >
                 <template #default="scope">
                     {{ scope.row.capacity }} personne{{
                         scope.row.capacity > 1 ? 's' : ''
                     }}
-                </template>
-            </el-table-column>
-            <el-table-column prop="floor" label="Emplacement" sortable />
-            <el-table-column label="Équipements" width="250">
-                <template #default="scope">
-                    <div class="features-tags">
-                        <el-tag
-                            v-for="feature in scope.row.features"
-                            :key="feature"
-                            size="small"
-                            class="feature-tag"
-                        >
-                            {{ getFeatureLabel(feature) }}
-                        </el-tag>
-                    </div>
                 </template>
             </el-table-column>
             <el-table-column label="Actions" width="200">
@@ -145,7 +104,7 @@
             :title="
                 roomModal.isEdit ? 'Modifier une salle' : 'Ajouter une salle'
             "
-            width="700px"
+            width="600px"
             @close="closeRoomModal"
         >
             <el-form
@@ -154,112 +113,19 @@
                 ref="roomFormRef"
                 label-position="top"
             >
-                <div class="form-row">
-                    <el-form-item label="Nom" prop="name">
-                        <el-input
-                            v-model="roomModal.form.name"
-                            placeholder="Nom de la salle"
-                        />
-                    </el-form-item>
-                    <el-form-item label="Type" prop="type">
-                        <el-select
-                            v-model="roomModal.form.type"
-                            placeholder="Type de salle"
-                            style="width: 100%"
-                        >
-                            <el-option
-                                v-for="type in roomTypes"
-                                :key="type.value"
-                                :label="type.label"
-                                :value="type.value"
-                            />
-                        </el-select>
-                    </el-form-item>
-                </div>
-
-                <div class="form-row">
-                    <el-form-item label="Capacité" prop="capacity">
-                        <el-input-number
-                            v-model="roomModal.form.capacity"
-                            :min="1"
-                            :max="50"
-                            style="width: 100%"
-                        />
-                    </el-form-item>
-                    <el-form-item label="Superficie (m²)" prop="dimension">
-                        <el-input-number
-                            v-model="roomModal.form.dimension"
-                            :min="1"
-                            style="width: 100%"
-                        />
-                    </el-form-item>
-                </div>
-
-                <el-form-item label="Emplacement" prop="floor">
+                <el-form-item label="Nom" prop="name">
                     <el-input
-                        v-model="roomModal.form.floor"
-                        placeholder="Étage, aile, etc."
+                        v-model="roomModal.form.name"
+                        placeholder="Nom de la salle"
                     />
                 </el-form-item>
 
-                <el-form-item label="Équipements" prop="features">
-                    <el-checkbox-group v-model="roomModal.form.features">
-                        <el-checkbox label="wifi">Wi-Fi</el-checkbox>
-                        <el-checkbox label="projector"
-                            >Vidéoprojecteur</el-checkbox
-                        >
-                        <el-checkbox label="whiteboard"
-                            >Tableau blanc</el-checkbox
-                        >
-                        <el-checkbox label="computer">Ordinateurs</el-checkbox>
-                    </el-checkbox-group>
-                </el-form-item>
-
-                <el-form-item label="Description" prop="description">
-                    <el-input
-                        v-model="roomModal.form.description"
-                        type="textarea"
-                        rows="4"
-                        placeholder="Description de la salle"
-                    />
-                </el-form-item>
-
-                <el-form-item label="Image">
-                    <div class="image-uploader">
-                        <el-image
-                            v-if="roomModal.form.imageUrl"
-                            :src="roomModal.form.imageUrl"
-                            fit="cover"
-                            style="
-                                width: 200px;
-                                height: 120px;
-                                margin-right: 20px;
-                                border-radius: 4px;
-                            "
-                        />
-                        <el-upload
-                            class="image-upload-button"
-                            action="#"
-                            :auto-upload="false"
-                            :show-file-list="false"
-                            :on-change="handleImageChange"
-                        >
-                            <el-button type="primary">
-                                {{
-                                    roomModal.form.imageUrl
-                                        ? "Changer l'image"
-                                        : 'Ajouter une image'
-                                }}
-                            </el-button>
-                        </el-upload>
-                    </div>
-                </el-form-item>
-
-                <el-form-item label="Mise en avant">
-                    <el-switch
-                        v-model="roomModal.form.popular"
-                        active-text="Populaire"
-                        inactive-text="Normal"
+                <el-form-item label="Capacité" prop="capacity">
+                    <el-input-number
+                        v-model="roomModal.form.capacity"
+                        :min="1"
+                        :max="50"
+                        style="width: 100%"
                     />
                 </el-form-item>
             </el-form>
@@ -324,57 +190,12 @@ import { ElMessage } from 'element-plus';
 // État
 const loading = ref(false);
 const searchQuery = ref('');
-const typeFilter = ref('');
 const capacityFilter = ref('');
 const currentPage = ref(1);
 const pageSize = ref(10);
 
-// Liste des types de salles
-const roomTypes = [
-    { value: 'Individuelle', label: 'Individuelle' },
-    { value: 'Groupe', label: 'Groupe' },
-    { value: 'Réunion', label: 'Réunion' },
-    { value: 'Présentation', label: 'Présentation' },
-    { value: 'Informatique', label: 'Informatique' },
-    { value: 'Multimédia', label: 'Multimédia' }
-];
-
-onMounted(async () => {
-    await loadRooms();
-});
-
 // Données des salles
-const rooms = ref();
-
-const loadRooms = async () => {
-    loading.value = true;
-    try {
-        const api = (await import('@/services/api')).default;
-        const roomsData = await api.get('/rooms');
-
-        // Transformer les données pour notre interface
-        rooms.value = roomsData.map((room) => ({
-            id: room.id,
-            name: room.name,
-            type: room.type || 'Standard',
-            capacity: room.places,
-            dimension: room.dimension || 0,
-            floor: room.floor || 'Non spécifié',
-            features: room.features ? JSON.parse(room.features) : ['wifi'],
-            description: room.description || 'Aucune description disponible.',
-            imageUrl: room.image_url || '/api/placeholder/400/250?text=Salle',
-            popular: room.popular || false
-        }));
-    } catch (error) {
-        console.error('Erreur lors du chargement des salles:', error);
-        ElMessage({
-            type: 'error',
-            message: 'Impossible de charger les salles. Veuillez réessayer.'
-        });
-    } finally {
-        loading.value = false;
-    }
-};
+const rooms = ref([]);
 
 // État du modal d'ajout/édition
 const roomModal = ref({
@@ -384,14 +205,7 @@ const roomModal = ref({
     form: {
         id: null,
         name: '',
-        type: '',
-        capacity: 1,
-        dimension: 0,
-        floor: '',
-        features: [],
-        description: '',
-        imageUrl: '',
-        popular: false
+        capacity: 1
     }
 });
 
@@ -415,28 +229,42 @@ const roomValidationRules = {
             trigger: 'blur'
         }
     ],
-    type: [
-        {
-            required: true,
-            message: 'Veuillez sélectionner un type de salle',
-            trigger: 'change'
-        }
-    ],
     capacity: [
         {
             required: true,
             message: 'Veuillez saisir la capacité de la salle',
             trigger: 'blur'
         }
-    ],
-    floor: [
-        {
-            required: true,
-            message: "Veuillez saisir l'emplacement de la salle",
-            trigger: 'blur'
-        }
     ]
 };
+
+// Chargement des salles
+const loadRooms = async () => {
+    loading.value = true;
+    try {
+        const api = (await import('@/services/api')).default;
+        const roomsData = await api.rooms.getAll();
+
+        // Transformer les données pour notre interface
+        rooms.value = roomsData.map((room) => ({
+            id: room.id,
+            name: room.name,
+            capacity: room.places || 1
+        }));
+    } catch (error) {
+        console.error('Erreur lors du chargement des salles:', error);
+        ElMessage({
+            type: 'error',
+            message: 'Impossible de charger les salles. Veuillez réessayer.'
+        });
+    } finally {
+        loading.value = false;
+    }
+};
+
+onMounted(async () => {
+    await loadRooms();
+});
 
 // Salles filtrées selon les critères de recherche
 const filteredRooms = computed(() => {
@@ -444,16 +272,9 @@ const filteredRooms = computed(() => {
 
     if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase();
-        result = result.filter(
-            (room) =>
-                room.name.toLowerCase().includes(query) ||
-                room.type.toLowerCase().includes(query) ||
-                room.floor.toLowerCase().includes(query)
+        result = result.filter((room) =>
+            room.name.toLowerCase().includes(query)
         );
-    }
-
-    if (typeFilter.value) {
-        result = result.filter((room) => room.type === typeFilter.value);
     }
 
     if (capacityFilter.value) {
@@ -470,24 +291,8 @@ const paginatedRooms = computed(() => {
 });
 
 // Fonctions
-const getFeatureLabel = (feature) => {
-    switch (feature) {
-        case 'wifi':
-            return 'Wi-Fi';
-        case 'projector':
-            return 'Vidéoprojecteur';
-        case 'whiteboard':
-            return 'Tableau blanc';
-        case 'computer':
-            return 'Ordinateurs';
-        default:
-            return feature;
-    }
-};
-
 const resetFilters = () => {
     searchQuery.value = '';
-    typeFilter.value = '';
     capacityFilter.value = '';
     currentPage.value = 1;
 };
@@ -510,14 +315,7 @@ const openAddRoomModal = () => {
     roomModal.value.form = {
         id: null,
         name: '',
-        type: '',
-        capacity: 1,
-        dimension: 0,
-        floor: '',
-        features: [],
-        description: '',
-        imageUrl: '',
-        popular: false
+        capacity: 1
     };
     roomModal.value.visible = true;
 };
@@ -532,15 +330,6 @@ const closeRoomModal = () => {
     roomModal.value.visible = false;
 };
 
-const handleImageChange = (file) => {
-    // Simuler le chargement d'une image
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        roomModal.value.form.imageUrl = e.target.result;
-    };
-    reader.readAsDataURL(file.raw);
-};
-
 const saveRoom = async () => {
     try {
         await roomFormRef.value.validate();
@@ -548,22 +337,12 @@ const saveRoom = async () => {
 
         const api = (await import('@/services/api')).default;
 
-        // Préparer les données pour l'API
-        const roomData = {
-            name: roomModal.value.form.name,
-            type: roomModal.value.form.type,
-            places: roomModal.value.form.capacity,
-            dimension: roomModal.value.form.dimension,
-            floor: roomModal.value.form.floor,
-            features: JSON.stringify(roomModal.value.form.features),
-            description: roomModal.value.form.description,
-            image_url: roomModal.value.form.imageUrl,
-            popular: roomModal.value.form.popular
-        };
-
         if (roomModal.value.isEdit) {
             // Mettre à jour la salle existante
-            await api.put(`/rooms/${roomModal.value.form.id}`, roomData);
+            await api.rooms.update(
+                roomModal.value.form.id,
+                roomModal.value.form
+            );
 
             ElMessage({
                 type: 'success',
@@ -571,7 +350,7 @@ const saveRoom = async () => {
             });
         } else {
             // Ajouter une nouvelle salle
-            await api.post('/rooms', roomData);
+            await api.rooms.create(roomModal.value.form);
 
             ElMessage({
                 type: 'success',
@@ -598,7 +377,7 @@ const saveRoom = async () => {
 const viewReservations = async (room) => {
     try {
         const api = (await import('@/services/api')).default;
-        const reservations = await api.get('/reservation/rooms');
+        const reservations = await api.roomReservations.getAll();
 
         const roomReservations = reservations.filter(
             (r) => r.room_id === room.id
@@ -610,7 +389,6 @@ const viewReservations = async (room) => {
                 message: `Aucune réservation pour la salle "${room.name}"`
             });
         } else {
-            // Afficher une notification avec le nombre de réservations
             ElMessage({
                 type: 'success',
                 message: `${roomReservations.length} réservation(s) trouvée(s) pour "${room.name}"`
@@ -642,7 +420,7 @@ const deleteRoom = async () => {
         confirmDialog.value.loading = true;
 
         const api = (await import('@/services/api')).default;
-        await api.delete(`/rooms/${confirmDialog.value.roomId}`);
+        await api.rooms.delete(confirmDialog.value.roomId);
 
         // Recharger les salles
         await loadRooms();
@@ -713,32 +491,6 @@ const deleteRoom = async () => {
     justify-content: flex-end;
 }
 
-.features-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-}
-
-.feature-tag {
-    margin-right: 0;
-}
-
-.form-row {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.form-row .el-form-item {
-    flex: 1;
-    margin-bottom: 0;
-}
-
-.image-uploader {
-    display: flex;
-    align-items: center;
-}
-
 .confirm-dialog-content {
     text-align: center;
     padding: 10px 0 20px;
@@ -764,11 +516,6 @@ const deleteRoom = async () => {
     .filter-input,
     .filter-select {
         width: 100%;
-    }
-
-    .form-row {
-        flex-direction: column;
-        gap: 0;
     }
 }
 </style>
