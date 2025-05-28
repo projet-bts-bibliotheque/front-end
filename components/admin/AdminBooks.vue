@@ -645,7 +645,7 @@ const saveBook = async () => {
             editor: bookModal.value.form.editorId,
             average_rating: bookModal.value.form.rating || 0,
             ratings_count: 0,
-            keyword: [bookModal.value.form.category || 'non-catégorisé'], // ← Valeur par défaut
+            keywords: [bookModal.value.form.category || 'non-catégorisé'], // ← Valeur par défaut
             summary: bookModal.value.form.description || '', // ← Valeur par défaut
             publish_year: bookModal.value.form.year,
             pages: bookModal.value.form.pages || 0, // ← Ajout du champ pages

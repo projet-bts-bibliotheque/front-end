@@ -3,8 +3,8 @@
         <div class="room-hero">
             <div class="overlay"></div>
             <div class="room-hero-content">
-                <h1>{{ room.name }}</h1>
-                <p>{{ room.type }}</p>
+                <h1>Salle n°{{ room.id }}</h1>
+                <p>Salle d'étude</p>
             </div>
         </div>
 
@@ -17,10 +17,9 @@
 
             <div class="room-details-container">
                 <div class="room-details-gallery">
-                    <div
-                        class="room-details-image"
-                        :style="{ backgroundImage: `url(${room.imageUrl})` }"
-                    ></div>
+                    <div class="room-details-image">
+                        <!-- Image placeholder avec gradient -->
+                    </div>
                 </div>
 
                 <div class="room-details-info">
@@ -31,29 +30,41 @@
                                 <el-icon><User /></el-icon>
                                 <span class="detail-label">Capacité:</span>
                                 <span class="detail-value"
-                                    >{{ room.capacity }} personnes</span
+                                    >{{ room.places }} personne{{
+                                        room.places > 1 ? 's' : ''
+                                    }}</span
                                 >
                             </div>
                             <div class="detail-item">
                                 <el-icon><OfficeBuilding /></el-icon>
                                 <span class="detail-label">Type:</span>
-                                <span class="detail-value">{{
-                                    room.type
-                                }}</span>
-                            </div>
-                            <div class="detail-item" v-if="room.dimension">
-                                <el-icon><FullScreen /></el-icon>
-                                <span class="detail-label">Superficie:</span>
-                                <span class="detail-value"
-                                    >{{ room.dimension }}m²</span
-                                >
+                                <span class="detail-value">Salle d'étude</span>
                             </div>
                             <div class="detail-item">
                                 <el-icon><Location /></el-icon>
                                 <span class="detail-label">Emplacement:</span>
-                                <span class="detail-value">{{
-                                    room.floor
-                                }}</span>
+                                <span class="detail-value"
+                                    >Bibliothèque principale</span
+                                >
+                            </div>
+                            <div class="detail-item">
+                                <el-icon><Calendar /></el-icon>
+                                <span class="detail-label">Statut:</span>
+                                <span class="detail-value">
+                                    <el-tag
+                                        :type="
+                                            isAvailableToday()
+                                                ? 'success'
+                                                : 'warning'
+                                        "
+                                    >
+                                        {{
+                                            isAvailableToday()
+                                                ? "Disponible aujourd'hui"
+                                                : "Réservée aujourd'hui"
+                                        }}
+                                    </el-tag>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -61,24 +72,21 @@
                     <div class="details-section">
                         <h2>Équipements</h2>
                         <div class="details-features">
-                            <div
-                                v-for="(feature, index) in room.features"
-                                :key="index"
-                                class="feature-detail"
-                            >
-                                <el-icon v-if="feature === 'wifi'"
-                                    ><Connection
-                                /></el-icon>
-                                <el-icon v-else-if="feature === 'projector'"
-                                    ><VideoPlay
-                                /></el-icon>
-                                <el-icon v-else-if="feature === 'whiteboard'"
-                                    ><Edit
-                                /></el-icon>
-                                <el-icon v-else-if="feature === 'computer'"
-                                    ><Monitor
-                                /></el-icon>
-                                <span>{{ getFeatureLabel(feature) }}</span>
+                            <div class="feature-detail">
+                                <el-icon><Connection /></el-icon>
+                                <span>Wi-Fi gratuit</span>
+                            </div>
+                            <div class="feature-detail">
+                                <el-icon><Edit /></el-icon>
+                                <span>Tableau blanc</span>
+                            </div>
+                            <div class="feature-detail">
+                                <el-icon><Monitor /></el-icon>
+                                <span>Éclairage optimal</span>
+                            </div>
+                            <div class="feature-detail">
+                                <el-icon><Phone /></el-icon>
+                                <span>Silence requis</span>
                             </div>
                         </div>
                     </div>
@@ -86,21 +94,72 @@
                     <div class="details-section">
                         <h2>Description</h2>
                         <p class="room-details-description">
-                            {{ room.description }}
+                            Salle d'étude moderne et confortable, équipée pour
+                            accueillir {{ room.places }} personne{{
+                                room.places > 1 ? 's' : ''
+                            }}. Idéale pour les sessions de travail, révisions
+                            et projets de groupe. L'espace bénéficie d'un
+                            éclairage naturel optimal et d'un environnement
+                            calme propice à la concentration.
                         </p>
+                    </div>
+
+                    <div class="details-section">
+                        <h2>Disponibilité</h2>
+                        <div class="availability-calendar">
+                            <el-calendar
+                                v-model="selectedDate"
+                                @date-change="onDateChange"
+                            >
+                                <template #date-cell="{ data }">
+                                    <div
+                                        class="calendar-day"
+                                        :class="getCalendarDayClass(data.day)"
+                                    >
+                                        <span class="day-number">{{
+                                            data.day.getDate()
+                                        }}</span>
+                                        <span
+                                            class="day-status"
+                                            v-if="!isPastDate(data.day)"
+                                        >
+                                            {{
+                                                isDateAvailable(data.day)
+                                                    ? '✓'
+                                                    : '✗'
+                                            }}
+                                        </span>
+                                    </div>
+                                </template>
+                            </el-calendar>
+                        </div>
+                        <div class="calendar-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot available"></span>
+                                <span>Disponible</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot unavailable"></span>
+                                <span>Réservée</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot past"></span>
+                                <span>Passée</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="details-section">
                         <h2>Règles d'utilisation</h2>
                         <ul class="room-rules">
                             <li>Réservation obligatoire à l'avance</li>
-                            <li>Priorité aux groupes du nombre indiqué</li>
-                            <li>Durée maximale de réservation: 4 heures</li>
+                            <li>Respecter les horaires de réservation</li>
+                            <li>Maintenir le silence dans la salle</li>
+                            <li>Laisser la salle propre et rangée</li>
                             <li>
-                                Les salles doivent être laissées propres et
-                                rangées
+                                Interdiction de manger (boissons autorisées)
                             </li>
-                            <li>Interdiction de manger ou boire (sauf eau)</li>
+                            <li>Signaler tout problème technique</li>
                         </ul>
                     </div>
 
@@ -115,9 +174,41 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Réservations récentes -->
+            <div class="recent-reservations" v-if="roomReservations.length > 0">
+                <h2>Réservations récentes</h2>
+                <div class="reservations-list">
+                    <div
+                        v-for="reservation in roomReservations.slice(0, 5)"
+                        :key="reservation.id"
+                        class="reservation-item"
+                    >
+                        <div class="reservation-date">
+                            {{ formatReservationDate(reservation.date) }}
+                        </div>
+                        <div class="reservation-status">
+                            <el-tag
+                                :type="
+                                    isPastDate(new Date(reservation.date))
+                                        ? 'info'
+                                        : 'success'
+                                "
+                                size="small"
+                            >
+                                {{
+                                    isPastDate(new Date(reservation.date))
+                                        ? 'Terminée'
+                                        : 'Programmée'
+                                }}
+                            </el-tag>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
 
-        <!-- Modal de réservation (conserver la même que dans l'index) -->
+        <!-- Modal de réservation -->
         <el-dialog
             v-model="showReservationModal"
             title=""
@@ -125,10 +216,91 @@
             custom-class="reservation-dialog"
             :show-close="false"
         >
-            <!-- Même contenu que dans votre page d'index -->
+            <div class="reservation-container">
+                <div class="reservation-header">
+                    <h2 class="reservation-title">Réserver la salle</h2>
+                    <el-button
+                        class="close-button"
+                        @click="showReservationModal = false"
+                        circle
+                        plain
+                    >
+                        <el-icon><Close /></el-icon>
+                    </el-button>
+                </div>
+
+                <div class="reservation-room-info">
+                    <div class="reservation-room-image"></div>
+                    <div class="reservation-room-details">
+                        <h3>Salle n°{{ room.id }}</h3>
+                        <div class="reservation-room-type">Salle d'étude</div>
+                        <div class="reservation-room-capacity">
+                            <el-icon><User /></el-icon>
+                            <span
+                                >{{ room.places }} personne{{
+                                    room.places > 1 ? 's' : ''
+                                }}</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <el-form
+                    class="reservation-form"
+                    :model="reservationForm"
+                    :rules="reservationRules"
+                    ref="reservationFormRef"
+                    label-position="top"
+                >
+                    <el-form-item label="Date" prop="date">
+                        <el-date-picker
+                            v-model="reservationForm.date"
+                            type="date"
+                            placeholder="Sélectionner une date"
+                            style="width: 100%"
+                            :disabled-date="disabledDate"
+                            format="DD/MM/YYYY"
+                        />
+                    </el-form-item>
+
+                    <el-form-item
+                        label="Commentaire (optionnel)"
+                        prop="comment"
+                    >
+                        <el-input
+                            v-model="reservationForm.comment"
+                            type="textarea"
+                            rows="3"
+                            placeholder="Précisions supplémentaires..."
+                        />
+                    </el-form-item>
+
+                    <div class="reservation-terms">
+                        <el-checkbox v-model="reservationForm.acceptTerms">
+                            <span class="terms-text">
+                                J'accepte les
+                                <a href="#" class="terms-link"
+                                    >règles d'utilisation</a
+                                >
+                                des salles de la bibliothèque
+                            </span>
+                        </el-checkbox>
+                    </div>
+
+                    <el-button
+                        type="primary"
+                        class="reservation-button"
+                        @click="handleReservation"
+                        :disabled="!reservationForm.acceptTerms"
+                        :loading="isSubmitting"
+                    >
+                        Confirmer la réservation
+                    </el-button>
+                </el-form>
+            </div>
         </el-dialog>
 
-        <!-- Modal de confirmation (conserver la même que dans l'index) -->
+        <!-- Modal de confirmation -->
         <el-dialog
             v-model="showConfirmationModal"
             title=""
@@ -137,11 +309,51 @@
             :show-close="false"
             :append-to-body="true"
         >
-            <!-- Même contenu que dans votre page d'index -->
+            <div class="confirmation-container">
+                <div class="confirmation-icon">
+                    <el-icon><CircleCheckFilled /></el-icon>
+                </div>
+                <h2 class="confirmation-title">Réservation confirmée !</h2>
+                <p class="confirmation-message">
+                    Votre réservation de la
+                    <strong>Salle n°{{ room.id }}</strong> a été confirmée pour
+                    le <strong>{{ formatConfirmationDate() }}</strong
+                    >.
+                </p>
+                <div class="confirmation-actions">
+                    <el-button @click="showConfirmationModal = false">
+                        Fermer
+                    </el-button>
+                    <el-button type="primary" @click="goToProfile">
+                        Voir mes réservations
+                    </el-button>
+                </div>
+            </div>
         </el-dialog>
 
-        <!-- Modaux de connexion, inscription, etc. (conserver les mêmes) -->
+        <!-- Modals de connexion -->
+        <LoginModal
+            v-model:show="showLoginModal"
+            v-model:loginForm="loginForm"
+            @login="login"
+            @switchToRegister="showRegisterModal = true"
+            @switchToForgotPassword="showForgotPasswordModal = true"
+        />
+
+        <RegisterModal
+            v-model:show="showRegisterModal"
+            :registerForm="registerForm"
+            @register="handleRegister"
+            @switchToLogin="showLoginModal = true"
+        />
+
+        <ForgotPasswordModal
+            v-model:show="showForgotPasswordModal"
+            @switchToLogin="showLoginModal = true"
+            @resetPasswordRequest="handleResetPasswordRequest"
+        />
     </div>
+
     <div v-else class="loading-state">
         <el-skeleton :rows="10" animated />
     </div>
@@ -154,77 +366,170 @@ import {
     User,
     ArrowLeft,
     Location,
-    FullScreen,
     Connection,
-    VideoPlay,
     Edit,
     Monitor,
-    OfficeBuilding
+    Phone,
+    OfficeBuilding,
+    Calendar,
+    Close,
+    CircleCheckFilled
 } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
+import LoginModal from '~/components/modals/LoginModal.vue';
+import RegisterModal from '~/components/modals/RegisterModal.vue';
+import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 
 defineOptions({
     name: 'RoomDetailPage'
 });
 
-// Récupérer l'ID de la salle depuis la route
 const route = useRoute();
+const router = useRouter();
 const roomId = parseInt(route.params.id);
 
-// État
+// États
 const room = ref(null);
+const roomReservations = ref([]);
+const selectedDate = ref(new Date());
 const showReservationModal = ref(false);
 const showConfirmationModal = ref(false);
 const showLoginModal = ref(false);
+const showRegisterModal = ref(false);
+const showForgotPasswordModal = ref(false);
+const isSubmitting = ref(false);
 
-// Réutiliser les autres états et fonctions de votre page index.vue
-// (timeSlots, reservationForm, reservationRules, etc.)
+// Formulaires
+const loginForm = ref({
+    email: '',
+    password: ''
+});
 
-// Fonctions pour les étiquettes des équipements
-const getFeatureLabel = (feature) => {
-    switch (feature) {
-        case 'wifi':
-            return 'Wi-Fi';
-        case 'projector':
-            return 'Vidéoprojecteur';
-        case 'whiteboard':
-            return 'Tableau blanc';
-        case 'computer':
-            return 'Ordinateurs';
-        default:
-            return feature;
-    }
+const registerForm = ref({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    address: '',
+    phone: '',
+    acceptTerms: false
+});
+
+const reservationForm = ref({
+    date: null,
+    comment: '',
+    acceptTerms: false
+});
+
+const reservationFormRef = ref(null);
+
+// Règles de validation
+const reservationRules = {
+    date: [
+        {
+            required: true,
+            message: 'Veuillez sélectionner une date',
+            trigger: 'blur'
+        }
+    ]
 };
 
-// Charger les données de la salle
-onMounted(async () => {
-    // Simuler un appel API pour récupérer les données de la salle
-    // Dans un environnement réel, vous feriez un appel API ici
-    setTimeout(() => {
-        // Ces données devraient venir de votre API ou d'un store partagé
-        const roomsData = [
-            // Copiez ici vos données de salles de l'index.vue
-            // allRooms.value depuis votre composant d'origine
-        ];
+// Chargement des données
+const loadRoomData = async () => {
+    try {
+        const api = (await import('@/services/api')).default;
 
-        room.value = roomsData.find((r) => r.id === roomId) || null;
+        const [roomData, reservationsData] = await Promise.all([
+            api.get(`/rooms/${roomId}`),
+            api.get('/reservation/rooms')
+        ]);
 
-        if (!room.value) {
-            // Rediriger vers la liste des salles si la salle n'existe pas
-            const router = useRouter();
+        if (!roomData) {
             router.push('/room');
             ElNotification({
                 title: 'Salle introuvable',
                 message: "La salle demandée n'existe pas.",
                 type: 'error'
             });
+            return;
         }
-    }, 500);
-});
 
-// Fonction pour ouvrir la modale de réservation
+        room.value = {
+            id: roomData.id,
+            places: roomData.places
+        };
+
+        // Filtrer les réservations pour cette salle
+        roomReservations.value = reservationsData
+            .filter((r) => r.room_id === roomId)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    } catch (error) {
+        console.error('Erreur lors du chargement de la salle:', error);
+        ElNotification({
+            title: 'Erreur',
+            message: 'Impossible de charger les informations de la salle.',
+            type: 'error'
+        });
+        router.push('/room');
+    }
+};
+
+// Fonctions utilitaires
+const disabledDate = (date) => {
+    return date < new Date(new Date().setHours(0, 0, 0, 0));
+};
+
+const isPastDate = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+};
+
+const isDateAvailable = (date) => {
+    if (isPastDate(date)) return false;
+
+    const dateStr = date.toISOString().split('T')[0];
+    return !roomReservations.value.some((reservation) =>
+        reservation.date.startsWith(dateStr)
+    );
+};
+
+const isAvailableToday = () => {
+    return isDateAvailable(new Date());
+};
+
+const getCalendarDayClass = (date) => {
+    if (isPastDate(date)) return 'past-date';
+    if (isDateAvailable(date)) return 'available-date';
+    return 'unavailable-date';
+};
+
+const formatReservationDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+};
+
+const formatConfirmationDate = () => {
+    if (!reservationForm.value.date) return '';
+    return new Date(reservationForm.value.date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+};
+
+// Actions
+const onDateChange = (date) => {
+    selectedDate.value = date;
+};
+
 const openReservationModal = () => {
-    // Vérifier si l'utilisateur est connecté (simulé)
+    // Vérifier si l'utilisateur est connecté
     if (!isUserLoggedIn()) {
         showLoginModal.value = true;
         ElNotification({
@@ -235,30 +540,115 @@ const openReservationModal = () => {
         return;
     }
 
-    // Préremplir le formulaire
-    reservationForm.value = {
-        date: new Date(),
-        timeSlot: '',
-        participants: 1,
-        purpose: '',
-        comment: '',
-        acceptTerms: false
-    };
-
+    reservationForm.value.date = selectedDate.value;
     showReservationModal.value = true;
 };
 
-// Fonction pour vérifier si l'utilisateur est connecté (simulée)
-const isUserLoggedIn = () => {
-    return false; // À remplacer par votre logique d'authentification
+const handleReservation = async () => {
+    if (!reservationForm.value.acceptTerms) {
+        ElNotification({
+            title: 'Conditions non acceptées',
+            message:
+                "Veuillez accepter les règles d'utilisation pour continuer.",
+            type: 'warning'
+        });
+        return;
+    }
+
+    try {
+        await reservationFormRef.value.validate();
+        isSubmitting.value = true;
+
+        const api = (await import('@/services/api')).default;
+
+        const formattedDate = new Date(reservationForm.value.date)
+            .toISOString()
+            .split('T')[0];
+
+        const reservationData = {
+            room_id: room.value.id,
+            date: formattedDate
+        };
+
+        await api.post('/reservation/rooms', reservationData);
+
+        // Recharger les réservations
+        await loadRoomData();
+
+        showReservationModal.value = false;
+        showConfirmationModal.value = true;
+
+        reservationForm.value = {
+            date: null,
+            comment: '',
+            acceptTerms: false
+        };
+
+        ElNotification({
+            title: 'Succès',
+            message: 'Votre réservation a été enregistrée avec succès.',
+            type: 'success'
+        });
+    } catch (error) {
+        console.error('Erreur lors de la réservation:', error);
+        ElNotification({
+            title: 'Erreur',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la réservation.',
+            type: 'error'
+        });
+    } finally {
+        isSubmitting.value = false;
+    }
 };
 
-// Ajoutez ici les autres fonctions nécessaires pour la réservation
-// handleReservation, login, handleRegister, etc.
+const goToProfile = () => {
+    showConfirmationModal.value = false;
+    router.push('/profile?tab=rooms');
+};
+
+// Fonctions d'authentification
+const isUserLoggedIn = () => {
+    const token =
+        localStorage.getItem('auth_token') ||
+        sessionStorage.getItem('auth_token');
+    return !!token;
+};
+
+const login = () => {
+    showLoginModal.value = false;
+    ElNotification({
+        title: 'Connecté',
+        message: 'Vous êtes maintenant connecté.',
+        type: 'success'
+    });
+};
+
+const handleRegister = () => {
+    showRegisterModal.value = false;
+    ElNotification({
+        title: 'Compte créé',
+        message: 'Votre compte a été créé avec succès.',
+        type: 'success'
+    });
+};
+
+const handleResetPasswordRequest = (email) => {
+    ElNotification({
+        title: 'Email envoyé',
+        message: `Un lien de réinitialisation a été envoyé à ${email}`,
+        type: 'success'
+    });
+};
+
+// Chargement initial
+onMounted(async () => {
+    await loadRoomData();
+});
 </script>
 
 <style scoped>
-/* Styles pour la page détails */
 .room-details-page {
     font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     color: #333;
@@ -337,6 +727,7 @@ const isUserLoggedIn = () => {
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     padding: 30px;
+    margin-bottom: 30px;
 }
 
 .room-details-gallery {
@@ -346,10 +737,15 @@ const isUserLoggedIn = () => {
 .room-details-image {
     width: 100%;
     height: 300px;
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: 600;
 }
 
 .room-details-info {
@@ -379,14 +775,309 @@ const isUserLoggedIn = () => {
     background-color: #1e88e5;
 }
 
-/* Réutilisez les autres styles de votre page d'index */
-/* details-grid, detail-item, details-features, etc. */
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #555;
+    min-width: 80px;
+}
+
+.detail-value {
+    flex: 1;
+    color: #333;
+}
+
+.details-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.feature-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #f0f6ff;
+    color: #1e88e5;
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+.room-details-description {
+    line-height: 1.7;
+    color: #555;
+}
+
+.availability-calendar {
+    margin-bottom: 20px;
+}
+
+:deep(.el-calendar) {
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+}
+
+:deep(.el-calendar-day) {
+    height: 60px;
+}
+
+.calendar-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border-radius: 4px;
+}
+
+.day-number {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.day-status {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.calendar-day.available-date {
+    background-color: #f0f9ff;
+    color: #059669;
+}
+
+.calendar-day.unavailable-date {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.calendar-day.past-date {
+    background-color: #f9fafb;
+    color: #9ca3af;
+}
+
+.calendar-legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.legend-dot.available {
+    background-color: #059669;
+}
+
+.legend-dot.unavailable {
+    background-color: #dc2626;
+}
+
+.legend-dot.past {
+    background-color: #9ca3af;
+}
+
+.room-rules {
+    padding-left: 20px;
+    color: #555;
+}
+
+.room-rules li {
+    margin-bottom: 8px;
+}
 
 .room-reservation-action {
     margin-top: 30px;
 }
 
-/* Media queries */
+.recent-reservations {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 30px;
+}
+
+.recent-reservations h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #1e88e5;
+}
+
+.reservations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.reservation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+.reservation-date {
+    font-weight: 500;
+    color: #333;
+}
+
+/* Modal styles */
+:deep(.reservation-dialog),
+:deep(.confirmation-dialog) {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.reservation-container,
+.confirmation-container {
+    padding: 24px;
+}
+
+.reservation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.reservation-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e88e5;
+    margin: 0;
+}
+
+.reservation-room-info {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    background-color: #f7f9fc;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.reservation-room-image {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.reservation-room-details {
+    flex: 1;
+}
+
+.reservation-room-details h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.reservation-room-type {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.reservation-room-capacity {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.reservation-form {
+    margin-bottom: 20px;
+}
+
+.reservation-terms {
+    margin: 16px 0 24px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.terms-text {
+    display: inline-block;
+    line-height: 1.4;
+}
+
+.terms-link {
+    color: #1e88e5;
+    text-decoration: none;
+}
+
+.terms-link:hover {
+    text-decoration: underline;
+}
+
+.reservation-button {
+    width: 100%;
+    height: 44px;
+    font-weight: 600;
+}
+
+/* Modal de confirmation */
+.confirmation-container {
+    text-align: center;
+}
+
+.confirmation-icon {
+    font-size: 4rem;
+    color: #4caf50;
+    margin-bottom: 20px;
+}
+
+.confirmation-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #4caf50;
+    margin-bottom: 16px;
+}
+
+.confirmation-message {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.confirmation-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.loading-state {
+    padding: 50px;
+}
+
+/* Responsive */
 @media (max-width: 1024px) {
     .room-details-container {
         flex-direction: column;
@@ -396,7 +1087,34 @@ const isUserLoggedIn = () => {
         flex: none;
         margin-bottom: 20px;
     }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-/* Vous pouvez copier d'autres styles depuis votre page d'index.vue */
+@media (max-width: 768px) {
+    .room-content {
+        width: 95%;
+    }
+
+    .room-details-container {
+        padding: 20px;
+    }
+
+    .calendar-legend {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .recent-reservations {
+        padding: 20px;
+    }
+
+    .reservation-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
 </style>
