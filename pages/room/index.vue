@@ -265,7 +265,7 @@
                     Votre réservation de la
                     <strong>Salle n°{{ selectedRoom?.id }}</strong> a été
                     confirmée pour le
-                    <strong>{{ formatConfirmationDate() }}</strong
+                    <strong>{{ formatConfirmationDate }}</strong
                     >.
                 </p>
                 <div class="confirmation-instructions">
@@ -333,6 +333,7 @@ defineOptions({
 });
 
 const router = useRouter();
+const formatConfirmationDate = ref();
 
 // État UI
 const loading = ref(true);
@@ -465,16 +466,6 @@ const isRoomAvailable = (room) => {
     );
 };
 
-const formatConfirmationDate = () => {
-    if (!reservationForm.value.date) return '';
-    return new Date(reservationForm.value.date).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
-};
-
 // Filtrage des salles
 const filteredRooms = computed(() => {
     let result = [...rooms.value];
@@ -541,6 +532,8 @@ const handleReservation = async () => {
         const formattedDate = new Date(reservationForm.value.date)
             .toISOString()
             .split('T')[0];
+
+        formatConfirmationDate.value = formattedDate;
 
         const reservationData = {
             room_id: selectedRoom.value.id,
