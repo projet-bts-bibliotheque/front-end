@@ -517,7 +517,6 @@ const loadBooks = async () => {
             const editor = editorsData.find((e) => e.id === book.editor);
 
             return {
-                id: book.id,
                 isbn: book.isbn,
                 title: book.title,
                 author: author
@@ -528,7 +527,7 @@ const loadBooks = async () => {
                 editorId: book.editor,
                 rating: book.average_rating || 0,
                 ratingsCount: book.ratings_count || 0,
-                coverUrl: book.thumbnails || '/api/placeholder/150/220',
+                coverUrl: book.thumbnail || '/api/placeholder/150/220',
                 available: !borrowedBooks.includes(book.isbn),
                 category: Array.isArray(book.keyword)
                     ? book.keyword[0] || 'non-catégorisé'
@@ -553,6 +552,7 @@ const loadBooks = async () => {
 // Charger les livres au montage du composant
 onMounted(async () => {
     await loadBooks();
+    console.log('📚 Livres chargés:', books.value); // Pour debug
 });
 
 // Fonctions utilitaires

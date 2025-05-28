@@ -51,18 +51,6 @@
                                     book.available ? 'Réserver' : 'Indisponible'
                                 }}
                             </el-button>
-                            <el-button
-                                @click="addToFavorites"
-                                :icon="Star"
-                                class="favorite-button"
-                                :class="{ 'is-favorite': isFavorite }"
-                            >
-                                {{
-                                    isFavorite
-                                        ? 'Retiré des favoris'
-                                        : 'Ajouter aux favoris'
-                                }}
-                            </el-button>
                         </div>
                     </div>
 
@@ -96,8 +84,7 @@
                                 }}
                             </span>
                             <span class="status-extra" v-if="book.available">
-                                ({{ randomAvailableCount }} exemplaires
-                                disponibles)
+                                (1 exemplaire disponible)
                             </span>
                             <span class="status-extra" v-else>
                                 (Retour prévu le {{ expectedReturnDate }})
@@ -169,25 +156,6 @@
                                 {{
                                     book.available ? 'Réserver' : 'Indisponible'
                                 }}
-                            </el-button>
-                            <el-button
-                                @click="addToFavorites"
-                                :icon="Star"
-                                class="favorite-button"
-                                :class="{ 'is-favorite': isFavorite }"
-                            >
-                                {{
-                                    isFavorite
-                                        ? 'Retiré des favoris'
-                                        : 'Ajouter aux favoris'
-                                }}
-                            </el-button>
-                            <el-button
-                                @click="shareBook"
-                                :icon="Share"
-                                class="share-button"
-                            >
-                                Partager
                             </el-button>
                         </div>
                     </div>
@@ -441,7 +409,6 @@
 
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-// ✅ Supprimé: import { useHead } from '@vueuse/head'; - useHead est disponible automatiquement dans Nuxt 3
 import {
     Star,
     StarFilled,
@@ -454,27 +421,27 @@ import {
 } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
 
-// Définir les options pour le composant
 defineOptions({
     name: 'BookDetailsPage'
 });
 
-// Récupération de l'ID du livre depuis l'URL
+//récupération de l'id depuis l'URL
 const route = useRoute();
 const router = useRouter();
-const bookId = parseInt(route.params.id);
+const bookId = route.params.id;
 
-// État pour les modales et formulaires
-const searchQuery = ref('');
+const loading = ref(true);
+const book = ref(null);
+const allBooks = ref([]);
+const authors = ref([]);
+
+// États pour les modales
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
 const showShareDialog = ref(false);
 const isFavorite = ref(false);
 
-// Recherche du livre avec l'ID correspondant
-const book = ref(null);
-
-// Variables pour les différents carousels
+// Variables pour les carousels
 const relatedBooksPosition = ref(0);
 const authorBooksPosition = ref(0);
 const trendingBooksPosition = ref(0);
@@ -482,59 +449,105 @@ const bookItemWidth = 220;
 const bookGap = 20;
 const visibleItems = ref(4);
 
-// Exemple de données (vous pouvez les récupérer depuis votre API)
-const sampleBooks = [{}];
-
-// Générer une date future aléatoire
+// Données générées aléatoirement
 const randomReviewCount = Math.floor(Math.random() * 500) + 50;
 const randomAvailableCount = Math.floor(Math.random() * 5) + 1;
 const expectedReturnDate = getRandomFutureDate();
 
-// Calculer les informations du livre
-const isLoggedIn = ref(false);
+// Chargement des données
+const loadBookData = async () => {
+    try {
+        const api = (await import('@/services/api')).default;
 
-// Calcul du nombre de livres visibles en fonction de la taille de l'écran
-onMounted(() => {
-    updateVisibleItems();
-    window.addEventListener('resize', updateVisibleItems);
+        // Récupérer tous les livres, auteurs et réservations
+        const [booksData, authorsData, reservations] = await Promise.all([
+            api.get('/books'),
+            api.get('/authors'),
+            api.get('/reservation/books')
+        ]);
 
-    // Simulation d'une requête API pour charger le livre
-    setTimeout(() => {
-        book.value = sampleBooks.find((book) => book.id === bookId) || null;
+        authors.value = authorsData;
+
+        // Obtenir la liste des livres actuellement empruntés
+        const borrowedBooks = reservations
+            .filter((r) => !r.return_date)
+            .map((r) => r.book_id);
+
+        // Transformer les données
+        allBooks.value = booksData.map((bookItem) => {
+            const author = authorsData.find((a) => a.id === bookItem.author);
+
+            return {
+                id: bookItem.isbn, // Utiliser l'ISBN comme ID
+                isbn: bookItem.isbn,
+                title: bookItem.title,
+                author: author
+                    ? `${author.firstname} ${author.lastname}`
+                    : 'Auteur inconnu',
+                rating: bookItem.average_rating || 0,
+                coverUrl: bookItem.thumbnails || '/api/placeholder/300/450',
+                available: !borrowedBooks.includes(bookItem.isbn),
+                category: Array.isArray(bookItem.keyword)
+                    ? bookItem.keyword[0] || 'non-catégorisé'
+                    : bookItem.keyword || 'non-catégorisé',
+                pages: bookItem.pages || 0,
+                year: bookItem.publish_year || 2020,
+                description: bookItem.summary || 'Description non disponible.',
+                publisher: 'Éditions Gallimard', // Valeur par défaut
+                language: 'Français' // Valeur par défaut
+            };
+        });
+
+        // Trouver le livre spécifique
+        book.value = allBooks.value.find(
+            (b) => b.id === bookId || b.isbn === bookId
+        );
 
         if (!book.value) {
             // Redirection si le livre n'existe pas
-            router.push('/');
+            const router = useRouter();
+            router.push('/catalog');
             ElNotification({
                 title: 'Livre non trouvé',
                 message:
                     "Le livre demandé n'existe pas dans notre bibliothèque.",
                 type: 'error'
             });
+            return;
         }
 
-        // ✅ Utilisation correcte de useHead dans Nuxt 3
-        if (book.value) {
-            useHead({
-                title: `${book.value.title} - BibliothèqueNuxt`,
-                meta: [
-                    {
-                        name: 'description',
-                        content:
-                            book.value.description ||
-                            `Découvrez "${book.value.title}" de ${book.value.author} dans notre bibliothèque.`
-                    }
-                ]
-            });
-        }
-    }, 800);
-});
+        // Mettre à jour le titre de la page
+        useHead({
+            title: `${book.value.title} - BibliothèqueNuxt`,
+            meta: [
+                {
+                    name: 'description',
+                    content:
+                        book.value.description ||
+                        `Découvrez "${book.value.title}" de ${book.value.author} dans notre bibliothèque.`
+                }
+            ]
+        });
+    } catch (error) {
+        console.error('Erreur lors du chargement du livre:', error);
+        ElNotification({
+            title: 'Erreur',
+            message: 'Impossible de charger les informations du livre.',
+            type: 'error'
+        });
+        const router = useRouter();
+        router.push('/catalog');
+    } finally {
+        loading.value = false;
+    }
+};
 
 // Nettoyage à la destruction du composant
 onBeforeUnmount(() => {
     window.removeEventListener('resize', updateVisibleItems);
 });
 
+// Fonctions utilitaires
 function updateVisibleItems() {
     const width = window.innerWidth;
     if (width < 768) {
@@ -548,7 +561,7 @@ function updateVisibleItems() {
     }
 }
 
-// Calcul de la position maximale pour les carousels
+// Calcul des positions maximales pour les carousels
 const maxRelatedBooksPosition = computed(() => {
     if (!relatedBooks.value.length) return 0;
     const totalWidth = relatedBooks.value.length * (bookItemWidth + bookGap);
@@ -615,9 +628,9 @@ function slideTrendingBooksRight() {
 
 // Recherche des livres associés (même catégorie, mais auteur différent)
 const relatedBooks = computed(() => {
-    if (!book.value) return [];
+    if (!book.value || !allBooks.value.length) return [];
 
-    return sampleBooks
+    return allBooks.value
         .filter(
             (b) =>
                 b.id !== book.value.id &&
@@ -626,19 +639,20 @@ const relatedBooks = computed(() => {
         )
         .slice(0, 6);
 });
-
 // Livres du même auteur
 const booksByAuthor = computed(() => {
-    if (!book.value) return [];
+    if (!book.value || !allBooks.value.length) return [];
 
-    return sampleBooks
+    return allBooks.value
         .filter((b) => b.id !== book.value.id && b.author === book.value.author)
         .slice(0, 6);
 });
 
-// Livres populaires en ce moment (simulés)
+// Livres populaires
 const trendingBooks = computed(() => {
-    return [...sampleBooks]
+    if (!allBooks.value.length) return [];
+
+    return [...allBooks.value]
         .sort((a, b) => b.rating - a.rating)
         .filter((b) => b.id !== book.value?.id)
         .slice(0, 6);
@@ -659,7 +673,6 @@ function getRandomFutureDate(minDays = 3, maxDays = 30) {
     });
 }
 
-// Fonctions pour les actions utilisateurs
 const reserveBook = async () => {
     if (!book.value?.available) {
         ElNotification({
@@ -670,7 +683,11 @@ const reserveBook = async () => {
         return;
     }
 
-    if (!isLoggedIn.value) {
+    // Vérifier si l'utilisateur est connecté
+    const token =
+        localStorage.getItem('auth_token') ||
+        sessionStorage.getItem('auth_token');
+    if (!token) {
         showLoginModal.value = true;
         ElNotification({
             title: 'Connexion requise',
@@ -681,13 +698,17 @@ const reserveBook = async () => {
     }
 
     try {
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
-        // Envoyer la demande de réservation
-        await api.post('/reservation/books', { book_id: book.value.isbn });
+        // Récupérer d'abord les informations de l'utilisateur connecté
+        const userData = await api.get('/me');
 
-        // Mettre à jour l'état du livre localement
+        // Envoyer la réservation avec user_id et book_id
+        await api.post('/reservation/books', {
+            user_id: userData.id,
+            book_id: book.value.isbn
+        });
+
         book.value.available = false;
 
         ElNotification({
@@ -698,7 +719,6 @@ const reserveBook = async () => {
         });
     } catch (error) {
         console.error('Erreur lors de la réservation:', error);
-
         ElNotification({
             title: 'Erreur',
             message:
@@ -709,66 +729,19 @@ const reserveBook = async () => {
     }
 };
 
-const addToFavorites = () => {
-    if (!isLoggedIn.value) {
-        showLoginModal.value = true;
-        ElNotification({
-            title: 'Connexion requise',
-            message:
-                'Veuillez vous connecter pour ajouter un livre à vos favoris.',
-            type: 'info'
-        });
-        return;
-    }
-
-    isFavorite.value = !isFavorite.value;
-
-    ElNotification({
-        title: isFavorite.value ? 'Ajouté aux favoris' : 'Retiré des favoris',
-        message: isFavorite.value
-            ? `"${book.value.title}" a été ajouté à vos favoris`
-            : `"${book.value.title}" a été retiré de vos favoris`,
-        type: 'success'
-    });
-};
-
 const shareBook = () => {
     showShareDialog.value = true;
 };
 
-// Fonctions d'authentification simulées
-const isUserLoggedIn = () => {
-    // Simulation - à remplacer par une vraie vérification d'authentification
-    return false; // Pour tester le flux de connexion
-};
+onMounted(async () => {
+    updateVisibleItems();
+    window.addEventListener('resize', updateVisibleItems);
+    await loadBookData();
+});
 
-const login = () => {
-    showLoginModal.value = false;
-    // Rediriger vers la page précédente ou continuer l'action
-    ElNotification({
-        title: 'Connecté',
-        message: 'Vous êtes maintenant connecté.',
-        type: 'success'
-    });
-};
-
-const handleRegister = () => {
-    showRegisterModal.value = false;
-    ElNotification({
-        title: 'Compte créé',
-        message: 'Votre compte a été créé avec succès.',
-        type: 'success'
-    });
-};
-
-const handleResetPasswordRequest = (email) => {
-    ElNotification({
-        title: 'Email envoyé',
-        message:
-            'Un lien de réinitialisation a été envoyé à votre adresse email.',
-        type: 'success'
-    });
-};
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', updateVisibleItems);
+});
 </script>
 
 <style scoped>

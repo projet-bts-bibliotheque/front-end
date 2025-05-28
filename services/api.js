@@ -1,11 +1,11 @@
-// Service central pour les appels API
+// services/api.js - Version corrigée
 
 const API_URL = process.env.API_URL || 'http://localhost:1234/api';
 
 /**
  * Service pour gérer toutes les requêtes API
  */
-export default {
+const apiService = {
     /**
      * Options par défaut pour fetch
      */
@@ -120,120 +120,124 @@ export default {
             console.error(`Erreur API DELETE ${endpoint}:`, error);
             throw error;
         }
-    },
-
-    // Services spécifiques
-    auth: {
-        register(userData) {
-            return this.post('/register', userData);
-        },
-        login(credentials) {
-            return this.post('/login', credentials);
-        },
-        me() {
-            return this.get('/me');
-        },
-        forgotPassword(email) {
-            return this.post('/forgot-password', { email });
-        },
-        resetPassword(data) {
-            return this.post('/reset-password', data);
-        },
-        update(userData) {
-            return this.put('/me', userData);
-        }
-    },
-
-    books: {
-        getAll() {
-            return this.get('/books');
-        },
-        get(id) {
-            return this.get(`/books/${id}`);
-        },
-        create(bookData) {
-            // return this.post('/books', bookData);
-        },
-        update(id, bookData) {
-            return this.put(`/books/${id}`, bookData);
-        },
-        delete(id) {
-            return this.delete(`/books/${id}`);
-        }
-    },
-
-    authors: {
-        getAll() {
-            return this.get('/authors');
-        },
-        get(id) {
-            return this.get(`/authors/${id}`);
-        }
-    },
-
-    editors: {
-        getAll() {
-            return this.get('/editors');
-        },
-        get(id) {
-            return this.get(`/editors/${id}`);
-        }
-    },
-
-    rooms: {
-        getAll() {
-            return this.get('/rooms');
-        },
-        get(id) {
-            return this.get(`/rooms/${id}`);
-        },
-        create(roomData) {
-            return this.post('/rooms', roomData);
-        },
-        update(id, roomData) {
-            return this.put(`/rooms/${id}`, roomData);
-        },
-        delete(id) {
-            return this.delete(`/rooms/${id}`);
-        }
-    },
-
-    bookReservations: {
-        getAll() {
-            return this.get('/reservation/books');
-        },
-        getMine() {
-            return this.get('/reservation/books/me');
-        },
-        create(bookId) {
-            return this.post('/reservation/books', { book_id: bookId });
-        },
-        returnBook(bookId) {
-            return this.post('/reservation/books/return', { book_id: bookId });
-        },
-        delete(reservationId) {
-            return this.delete(`/reservation/books/${reservationId}`);
-        },
-        getUserReservations(userId) {
-            return this.get(`/reservation/books/${userId}`);
-        }
-    },
-
-    roomReservations: {
-        getAll() {
-            return this.get('/reservation/rooms');
-        },
-        getMine() {
-            return this.get('/reservation/rooms/me');
-        },
-        create(roomId, date) {
-            return this.post('/reservation/rooms', { room_id: roomId, date });
-        },
-        delete(reservationId) {
-            return this.delete(`/reservation/rooms/${reservationId}`);
-        },
-        getUserReservations(userId) {
-            return this.get(`/reservation/rooms/${userId}`);
-        }
     }
 };
+
+// Ajouter les services spécifiques à l'objet principal
+apiService.auth = {
+    register(userData) {
+        return apiService.post('/register', userData);
+    },
+    login(credentials) {
+        return apiService.post('/login', credentials);
+    },
+    me() {
+        return apiService.get('/me');
+    },
+    forgotPassword(email) {
+        return apiService.post('/forgot-password', { email });
+    },
+    resetPassword(data) {
+        return apiService.post('/reset-password', data);
+    },
+    update(userData) {
+        return apiService.put('/me', userData);
+    }
+};
+
+apiService.books = {
+    getAll() {
+        return apiService.get('/books');
+    },
+    get(id) {
+        return apiService.get(`/books/${id}`);
+    },
+    create(bookData) {
+        return apiService.post('/books', bookData);
+    },
+    update(id, bookData) {
+        return apiService.put(`/books/${id}`, bookData);
+    },
+    delete(id) {
+        return apiService.delete(`/books/${id}`);
+    }
+};
+
+apiService.authors = {
+    getAll() {
+        return apiService.get('/authors');
+    },
+    get(id) {
+        return apiService.get(`/authors/${id}`);
+    }
+};
+
+apiService.editors = {
+    getAll() {
+        return apiService.get('/editors');
+    },
+    get(id) {
+        return apiService.get(`/editors/${id}`);
+    }
+};
+
+apiService.rooms = {
+    getAll() {
+        return apiService.get('/rooms');
+    },
+    get(id) {
+        return apiService.get(`/rooms/${id}`);
+    },
+    create(roomData) {
+        return apiService.post('/rooms', roomData);
+    },
+    update(id, roomData) {
+        return apiService.put(`/rooms/${id}`, roomData);
+    },
+    delete(id) {
+        return apiService.delete(`/rooms/${id}`);
+    }
+};
+
+apiService.bookReservations = {
+    getAll() {
+        return apiService.get('/reservation/books');
+    },
+    getMine() {
+        return apiService.get('/reservation/books/me');
+    },
+    create(bookId) {
+        return apiService.post('/reservation/books', { book_id: bookId });
+    },
+    returnBook(bookId) {
+        return apiService.post('/reservation/books/return', {
+            book_id: bookId
+        });
+    },
+    delete(reservationId) {
+        return apiService.delete(`/reservation/books/${reservationId}`);
+    },
+    getUserReservations(userId) {
+        return apiService.get(`/reservation/books/${userId}`);
+    }
+};
+
+apiService.roomReservations = {
+    getAll() {
+        return apiService.get('/reservation/rooms');
+    },
+    getMine() {
+        return apiService.get('/reservation/rooms/me');
+    },
+    create(roomId, date) {
+        return apiService.post('/reservation/rooms', { room_id: roomId, date });
+    },
+    delete(reservationId) {
+        return apiService.delete(`/reservation/rooms/${reservationId}`);
+    },
+    getUserReservations(userId) {
+        return apiService.get(`/reservation/rooms/${userId}`);
+    }
+};
+
+export default apiService;

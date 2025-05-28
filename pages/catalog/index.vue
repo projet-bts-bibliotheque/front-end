@@ -202,7 +202,7 @@
                                 <div
                                     class="book-cover"
                                     :style="{
-                                        backgroundImage: `url(${book.coverUrl})`
+                                        backgroundImage: `url(${book.thumbnail})`
                                     }"
                                 ></div>
                                 <div class="book-info">
@@ -395,14 +395,21 @@ onMounted(async () => {
         // Importer le service API
         const api = (await import('@/services/api')).default;
 
-        // Récupérer les livres depuis l'API
-        const books = await api.get('/books');
+        // Récupérer les livres et les auteurs depuis l'API
+        const [books, authors, reservations] = await Promise.all([
+            api.get('/books'),
+            api.get('/authors'),
+            api.get('/reservation/books')
+        ]);
 
-        // Récupérer également les auteurs pour combiner les informations
-        const authors = await api.get('/authors');
         authorsList.value = authors.map(
             (author) => `${author.firstname} ${author.lastname}`
         );
+
+        // Obtenir la liste des livres actuellement empruntés (pas encore retournés)
+        const borrowedBooks = reservations
+            .filter((r) => !r.return_date)
+            .map((r) => r.book_id);
 
         // Transformer les données pour correspondre à notre structure frontend
         allBooks.value = books.map((book) => ({
@@ -410,14 +417,18 @@ onMounted(async () => {
             title: book.title,
             author: getAuthorName(book.author, authors),
             rating: book.average_rating || 0,
-            coverUrl: book.thumbnails || '/api/placeholder/150/220',
-            available: !getIsBookBorrowed(book.isbn), // À implémenter avec les réservations
-            category: book.category || 'non-catégorisé',
+            thumbnail: book.thumbnail || '/api/placeholder/150/220',
+            available: !borrowedBooks.includes(book.isbn), // Vérifier si le livre n'est pas emprunté
+            category: Array.isArray(book.keyword)
+                ? book.keyword[0] || 'non-catégorisé'
+                : book.keyword || 'non-catégorisé',
             pages: book.pages || 0,
             year: book.publish_year || 0,
             isbn: book.isbn,
             description: book.summary || ''
         }));
+
+        console.log('Livres chargés:', allBooks.value);
     } catch (error) {
         console.error('Erreur lors du chargement des livres:', error);
         ElNotification({
@@ -427,7 +438,7 @@ onMounted(async () => {
             type: 'error'
         });
 
-        // En cas d'erreur, utiliser des données de test pour ne pas bloquer l'interface
+        // En cas d'erreur, utiliser des données vides
         allBooks.value = [];
     } finally {
         isLoading.value = false;
@@ -625,7 +636,10 @@ const reserveBook = async (book) => {
     }
 
     // Vérifier si l'utilisateur est connecté
-    if (!isLoggedIn.value) {
+    const token =
+        localStorage.getItem('auth_token') ||
+        sessionStorage.getItem('auth_token');
+    if (!token) {
         showLoginModal.value = true;
         ElNotification({
             title: 'Connexion requise',
@@ -636,14 +650,18 @@ const reserveBook = async (book) => {
     }
 
     try {
-        isLoading.value = true;
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
-        // Envoyer la demande de réservation
-        await api.post('/reservation/books', { book_id: book.isbn });
+        // Récupérer d'abord les informations de l'utilisateur connecté
+        const userData = await api.get('/me');
 
-        // Mettre à jour l'état du livre en local pour refléter la réservation
+        // Envoyer la réservation avec user_id et book_id
+        await api.post('/reservation/books', {
+            user_id: userData.id,
+            book_id: book.isbn
+        });
+
+        // Mettre à jour l'état du livre en local
         const index = allBooks.value.findIndex((b) => b.isbn === book.isbn);
         if (index !== -1) {
             allBooks.value[index].available = false;
@@ -652,7 +670,8 @@ const reserveBook = async (book) => {
         ElNotification({
             title: 'Réservation confirmée',
             message: `Livre "${book.title}" réservé avec succès!`,
-            type: 'success'
+            type: 'success',
+            duration: 5000
         });
     } catch (error) {
         console.error('Erreur lors de la réservation du livre:', error);
@@ -664,8 +683,6 @@ const reserveBook = async (book) => {
                 'Une erreur est survenue lors de la réservation.',
             type: 'error'
         });
-    } finally {
-        isLoading.value = false;
     }
 };
 

@@ -235,13 +235,61 @@ const slideRight = (categoryIndex) => {
  * @param {Object} book - Le livre à réserver
  * @returns {void}
  */
-const reserveBook = (book) => {
-    if (book.available) {
-        // Logique de réservation
+const reserveBook = async (book) => {
+    if (!book.available) {
+        ElNotification({
+            title: 'Non disponible',
+            message: "Ce livre n'est pas disponible actuellement.",
+            type: 'warning'
+        });
+        return;
+    }
+
+    // Vérifier si l'utilisateur est connecté
+    const token =
+        localStorage.getItem('auth_token') ||
+        sessionStorage.getItem('auth_token');
+    if (!token) {
+        ElNotification({
+            title: 'Connexion requise',
+            message: 'Veuillez vous connecter pour réserver un livre.',
+            type: 'info'
+        });
+        return;
+    }
+
+    try {
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Envoyer la demande de réservation avec l'ISBN du livre
+        await api.post('/reservation/books', { book_id: book.isbn });
+
+        // Mettre à jour l'état du livre dans toutes les catégories
+        categories.value.forEach((category) => {
+            const bookIndex = category.books.findIndex(
+                (b) => b.isbn === book.isbn
+            );
+            if (bookIndex !== -1) {
+                category.books[bookIndex].available = false;
+            }
+        });
+
         ElNotification({
             title: 'Réservation confirmée',
             message: `Livre "${book.title}" réservé avec succès!`,
-            type: 'success'
+            type: 'success',
+            duration: 5000
+        });
+    } catch (error) {
+        console.error('Erreur lors de la réservation du livre:', error);
+
+        ElNotification({
+            title: 'Erreur',
+            message:
+                error.message ||
+                'Une erreur est survenue lors de la réservation.',
+            type: 'error'
         });
     }
 };

@@ -16,12 +16,6 @@
                 <el-menu-item index="/admin" v-if="isAdmin" route="/admin"
                     >Administration</el-menu-item
                 >
-                <el-menu-item
-                    index="/librarian"
-                    v-if="isLibrarian"
-                    route="/librarian"
-                    >Bibliothécaire</el-menu-item
-                >
             </el-menu>
         </div>
         <div class="search-container">

@@ -41,7 +41,11 @@
             stripe
             border
         >
-            <el-table-column prop="name" label="Nom" sortable />
+            <el-table-column prop="id" label="Numéro" sortable>
+                <template #default="scope">
+                    salle n°{{ scope.row.id }}
+                </template>
+            </el-table-column>
             <el-table-column
                 prop="capacity"
                 label="Capacité"
@@ -113,13 +117,6 @@
                 ref="roomFormRef"
                 label-position="top"
             >
-                <el-form-item label="Nom" prop="name">
-                    <el-input
-                        v-model="roomModal.form.name"
-                        placeholder="Nom de la salle"
-                    />
-                </el-form-item>
-
                 <el-form-item label="Capacité" prop="capacity">
                     <el-input-number
                         v-model="roomModal.form.capacity"
@@ -204,7 +201,6 @@ const roomModal = ref({
     loading: false,
     form: {
         id: null,
-        name: '',
         capacity: 1
     }
 });
@@ -248,7 +244,6 @@ const loadRooms = async () => {
         // Adapte selon les vrais noms de colonnes de ta DB :
         rooms.value = roomsData.map((room) => ({
             id: room.id,
-            name: room.room_name || room.name || 'Nom inconnu', // ← Adapte selon ta colonne
             capacity: room.places || room.capacity || 1
         }));
     } catch (error) {
@@ -336,7 +331,6 @@ const saveRoom = async () => {
         const api = (await import('@/services/api')).default;
 
         const roomData = {
-            name: roomModal.value.form.name,
             places: roomModal.value.form.capacity
         };
 
