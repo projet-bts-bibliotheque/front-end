@@ -105,7 +105,8 @@ const props = defineProps({
             firstName: '',
             lastName: '',
             email: '',
-            avatar: null
+            avatar: null,
+            role: 0 // Ajout du rôle dans les props
         })
     }
 });
@@ -115,21 +116,17 @@ const emit = defineEmits(['update:searchQuery', 'showLogin', 'logout']);
 const route = useRoute();
 const activeIndex = ref('/');
 
-const isAdmin = computed(async () => {
-    //il faut aller chercher le rôle via l'api
-    const api = (await import('@/services/api')).default;
-    const me = api.auth.me();
-    if (!me) {
-        return false;
-    }
-    if (me.role < 1) {
-        return true;
-    }
+// ✅ Correction: Utiliser les props au lieu d'appeler l'API
+const isAdmin = computed(() => {
+    // Vérifier si l'utilisateur est connecté ET a un rôle >= 1 (bibliothécaire ou admin)
+    return props.isLoggedIn && props.currentUser.role >= 1;
 });
-console.log('isAdmin', isAdmin.value);
+
 const isLibrarian = computed(() => {
-    //il faut aller chercher le rôle via l'api
+    // Vérifier si l'utilisateur est connecté ET a un rôle >= 1 (bibliothécaire ou admin)
+    return props.isLoggedIn && props.currentUser.role >= 1;
 });
+
 onMounted(() => {
     // Mettre à jour l'index actif en fonction de la route
     activeIndex.value = route.path;

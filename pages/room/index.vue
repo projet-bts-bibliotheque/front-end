@@ -533,7 +533,10 @@ const handleReservation = async () => {
             .toISOString()
             .split('T')[0];
 
-        formatConfirmationDate.value = formattedDate;
+        // Créer une nouvelle date avec un jour en plus
+        const nextDay = new Date(reservationForm.value.date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        formatConfirmationDate.value = nextDay.toISOString().split('T')[0];
 
         const reservationData = {
             room_id: selectedRoom.value.id,

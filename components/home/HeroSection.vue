@@ -12,7 +12,11 @@
                         >Explorer le catalogue</nuxt-link
                     ></el-button
                 >
-                <el-button size="large">Réserver une salle</el-button>
+                <el-button size="large"
+                    ><nuxt-link to="/room" class="cta-buttons-links2"
+                        >Réserver une salle</nuxt-link
+                    ></el-button
+                >
             </div>
         </div>
     </div>
@@ -71,6 +75,10 @@
 
 .cta-buttons-links {
     color: white;
+    text-decoration: none;
+}
+.cta-buttons-links2 {
+    color: black;
     text-decoration: none;
 }
 </style>

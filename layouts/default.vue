@@ -111,7 +111,7 @@ const checkLoginStatus = async () => {
                 firstName: userData.first_name,
                 lastName: userData.last_name,
                 email: userData.email,
-                role: userData.role
+                role: userData.role // ✅ S'assurer que le rôle est bien récupéré
             };
         } catch (error) {
             console.error(
@@ -128,7 +128,7 @@ const checkLoginStatus = async () => {
                 firstName: '',
                 lastName: '',
                 email: '',
-                role: 0
+                role: 0 // ✅ Réinitialiser le rôle
             };
         }
     } else {
@@ -138,10 +138,11 @@ const checkLoginStatus = async () => {
             firstName: '',
             lastName: '',
             email: '',
-            role: 0
+            role: 0 // ✅ Réinitialiser le rôle
         };
     }
 };
+
 // Sample books data for search autocomplete
 const sampleBooks = [{}];
 
@@ -171,19 +172,24 @@ const querySearch = (queryString, cb) => {
  * @param {Object} loginData - Données de connexion avec token
  * @returns {void}
  */
+/**
+ * Gère l'action de connexion utilisateur
+ * @param {Object} loginData - Données de connexion avec token
+ * @returns {void}
+ */
 const handleLogin = (loginData) => {
     // Stockage du token déjà fait dans le composant LoginModal
 
     // Mise à jour de l'état de connexion et des informations utilisateur
     isLoggedIn.value = true;
 
-    // Dans une app réelle, ces infos viendraient de l'API
-    // Ici nous utilisons des valeurs fictives
+    // ✅ Mise à jour avec toutes les informations utilisateur, y compris le rôle
     currentUser.value = {
         id: loginData.id,
         firstName: loginData.first_name,
         lastName: loginData.last_name,
-        email: loginData.email
+        email: loginData.email,
+        role: loginData.role || 0 // ✅ S'assurer que le rôle est pris en compte
     };
 
     ElNotification({
@@ -210,7 +216,8 @@ const handleRegister = (userData) => {
         id: Date.now(), // ID simulé
         firstName: userData.first_name,
         lastName: userData.last_name,
-        email: userData.email
+        email: userData.email,
+        role: 0 // ✅ Nouveau utilisateur = membre (rôle 0)
     };
 
     ElNotification({
@@ -242,7 +249,7 @@ const handleLogout = async () => {
             firstName: '',
             lastName: '',
             email: '',
-            role: 0
+            role: 0 // ✅ Réinitialiser le rôle
         };
 
         ElNotification({
@@ -269,7 +276,6 @@ const handleLogout = async () => {
         });
     }
 };
-
 /**
  * Traite une demande de réinitialisation de mot de passe
  * @param {string} email - Adresse email pour laquelle réinitialiser le mot de passe
