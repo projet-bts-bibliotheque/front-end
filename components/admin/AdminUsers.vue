@@ -502,7 +502,6 @@ const getRoleTagType = (role) => {
             return 'info';
     }
 };
-
 const resetFilters = () => {
     searchQuery.value = '';
     roleFilter.value = '';

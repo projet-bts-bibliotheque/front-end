@@ -122,26 +122,28 @@ const roleLabels = {
                     <AdminDashboard />
                 </el-tab-pane>
 
-                <!-- Gestion des livres -->
-                <el-tab-pane label="Livres" name="books">
+                <!-- Gestion des livres - Accessible aux bibliothécaires et admins -->
+                <el-tab-pane label="Livres" name="books" v-if="isLibrarian">
                     <AdminBooks />
                 </el-tab-pane>
 
-                <!-- Gestion des salles -->
-                <el-tab-pane label="Salles" name="rooms">
+                <!-- Gestion des salles - Accessible aux bibliothécaires et admins -->
+                <el-tab-pane label="Salles" name="rooms" v-if="isLibrarian">
                     <AdminRooms />
                 </el-tab-pane>
 
-                <!-- Gestion des utilisateurs -->
-                <el-tab-pane label="Utilisateurs" name="users">
+                <!-- Gestion des utilisateurs - Accessible UNIQUEMENT aux admins -->
+                <el-tab-pane label="Utilisateurs" name="users" v-if="isAdmin">
                     <AdminUsers />
                 </el-tab-pane>
-                <!-- Gestion des Auteurs-->
-                <el-tab-pane label="Auteurs" name="authors">
+
+                <!-- Gestion des Auteurs - Accessible aux bibliothécaires et admins -->
+                <el-tab-pane label="Auteurs" name="authors" v-if="isLibrarian">
                     <AdminAuthors />
                 </el-tab-pane>
-                <!-- Gestion des Editeurs-->
-                <el-tab-pane label="Editeurs" name="editors">
+
+                <!-- Gestion des Editeurs - Accessible aux bibliothécaires et admins -->
+                <el-tab-pane label="Editeurs" name="editors" v-if="isLibrarian">
                     <AdminEditors />
                 </el-tab-pane>
 

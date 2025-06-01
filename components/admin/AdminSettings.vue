@@ -57,6 +57,7 @@
                 </el-form>
             </div>
 
+            <!-- Section réservée aux administrateurs -->
             <div class="settings-section" v-if="isAdmin">
                 <h3>Paramètres du système</h3>
                 <el-form :model="systemSettings" label-position="top">
@@ -132,6 +133,48 @@
                     </el-form-item>
                 </el-form>
             </div>
+
+            <!-- Section pour les bibliothécaires uniquement -->
+            <div class="settings-section" v-if="isLibrarian && !isAdmin">
+                <h3>Paramètres de bibliothécaire</h3>
+                <el-alert
+                    title="Informations"
+                    type="info"
+                    description="En tant que bibliothécaire, vous avez accès à la gestion des livres, salles, auteurs et éditeurs. Seuls les administrateurs peuvent modifier les paramètres système et gérer les utilisateurs."
+                    show-icon
+                    :closable="false"
+                />
+
+                <el-form
+                    :model="librarianSettings"
+                    label-position="top"
+                    style="margin-top: 20px"
+                >
+                    <el-form-item label="Notifications d'emprunts en retard">
+                        <el-switch
+                            v-model="librarianSettings.notifyOverdueBooks"
+                            active-text="Activées"
+                            inactive-text="Désactivées"
+                        />
+                    </el-form-item>
+
+                    <el-form-item
+                        label="Notifications de nouvelles réservations"
+                    >
+                        <el-switch
+                            v-model="librarianSettings.notifyNewReservations"
+                            active-text="Activées"
+                            inactive-text="Désactivées"
+                        />
+                    </el-form-item>
+
+                    <el-form-item>
+                        <el-button type="primary" @click="saveLibrarianSettings"
+                            >Enregistrer mes préférences</el-button
+                        >
+                    </el-form-item>
+                </el-form>
+            </div>
         </div>
     </div>
 </template>
@@ -140,7 +183,6 @@
 import { ref, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 
-// Props
 const props = defineProps({
     currentUser: {
         type: Object,
@@ -148,13 +190,12 @@ const props = defineProps({
     }
 });
 
-// Computed properties
-const isAdmin = computed(() => props.currentUser.role === 'admin');
+const isAdmin = computed(() => props.currentUser.role >= 2);
+const isLibrarian = computed(() => props.currentUser.role >= 1);
 
-// État des paramètres
 const userSettings = ref({
-    name: props.currentUser.name || 'Admin Test',
-    email: props.currentUser.email || 'admin@bibliotheque.fr'
+    name: props.currentUser.name || 'Utilisateur Test',
+    email: props.currentUser.email || 'user@bibliotheque.fr'
 });
 
 const securitySettings = ref({
@@ -163,11 +204,9 @@ const securitySettings = ref({
     confirmPassword: ''
 });
 
-const preferences = ref({
-    language: 'fr',
-    theme: 'light',
-    notifications: true,
-    defaultPageSize: 20
+const librarianSettings = ref({
+    notifyOverdueBooks: true,
+    notifyNewReservations: true
 });
 
 const systemSettings = ref({
@@ -220,7 +259,6 @@ const systemSettings = ref({
     ]
 });
 
-// Méthodes
 const getDayName = (day) => {
     const days = [
         'Dimanche',
@@ -235,7 +273,6 @@ const getDayName = (day) => {
 };
 
 const saveUserSettings = () => {
-    // Simuler la sauvegarde des informations utilisateur
     ElMessage({
         type: 'success',
         message: 'Informations personnelles mises à jour avec succès'
@@ -243,7 +280,6 @@ const saveUserSettings = () => {
 };
 
 const changePassword = () => {
-    // Vérification des champs
     if (!securitySettings.value.currentPassword) {
         ElMessage({
             type: 'error',
@@ -271,13 +307,11 @@ const changePassword = () => {
         return;
     }
 
-    // Simuler le changement de mot de passe
     ElMessage({
         type: 'success',
         message: 'Mot de passe modifié avec succès'
     });
 
-    // Réinitialiser les champs
     securitySettings.value = {
         currentPassword: '',
         newPassword: '',
@@ -285,19 +319,14 @@ const changePassword = () => {
     };
 };
 
-const savePreferences = () => {
-    // Simuler la sauvegarde des préférences
+const saveLibrarianSettings = () => {
     ElMessage({
         type: 'success',
-        message: 'Préférences enregistrées avec succès'
+        message: 'Préférences de bibliothécaire enregistrées avec succès'
     });
-
-    // Dans une application réelle, vous pourriez vouloir propager ces préférences
-    // à d'autres composants, ou les stocker dans un store global
 };
 
 const saveSystemSettings = () => {
-    // Simuler la sauvegarde des paramètres système
     ElMessage({
         type: 'success',
         message: 'Paramètres système enregistrés avec succès'
@@ -343,6 +372,7 @@ const saveSystemSettings = () => {
     height: 3px;
     background-color: #1e88e5;
 }
+
 .opening-hours {
     display: flex;
     flex-direction: column;

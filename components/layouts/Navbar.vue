@@ -13,7 +13,10 @@
                     >Catalogue</el-menu-item
                 >
                 <el-menu-item index="/room" route="/room">Salles</el-menu-item>
-                <el-menu-item index="/admin" v-if="isAdmin" route="/admin"
+                <el-menu-item
+                    index="/admin"
+                    v-if="canAccessAdmin"
+                    route="/admin"
                     >Administration</el-menu-item
                 >
             </el-menu>
@@ -61,6 +64,10 @@
                             <el-icon><Calendar /></el-icon>
                             Mes réservations
                         </el-dropdown-item>
+                        <el-dropdown-item v-if="canAccessAdmin" command="admin">
+                            <el-icon><Setting /></el-icon>
+                            Administration
+                        </el-dropdown-item>
                         <el-dropdown-item divided command="logout">
                             <el-icon><SwitchButton /></el-icon>
                             Se déconnecter
@@ -82,7 +89,15 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { Search, ArrowDown } from '@element-plus/icons-vue';
+import {
+    Search,
+    ArrowDown,
+    User,
+    Reading,
+    Calendar,
+    Setting,
+    SwitchButton
+} from '@element-plus/icons-vue';
 import { useRoute, navigateTo } from 'nuxt/app';
 
 const props = defineProps({
@@ -106,7 +121,7 @@ const props = defineProps({
             lastName: '',
             email: '',
             avatar: null,
-            role: 0 // Ajout du rôle dans les props
+            role: 0
         })
     }
 });
@@ -116,15 +131,9 @@ const emit = defineEmits(['update:searchQuery', 'showLogin', 'logout']);
 const route = useRoute();
 const activeIndex = ref('/');
 
-// ✅ Correction: Utiliser les props au lieu d'appeler l'API
-const isAdmin = computed(() => {
-    // Vérifier si l'utilisateur est connecté ET a un rôle >= 1 (bibliothécaire ou admin)
-    return props.isLoggedIn && props.currentUser.role >= 1;
-});
-
-const isLibrarian = computed(() => {
-    // Vérifier si l'utilisateur est connecté ET a un rôle >= 1 (bibliothécaire ou admin)
-    return props.isLoggedIn && props.currentUser.role >= 1;
+// Vérifier si l'utilisateur peut accéder à l'administration
+const canAccessAdmin = computed(() => {
+    return props.currentUser && props.currentUser.role >= 1;
 });
 
 onMounted(() => {
@@ -151,6 +160,9 @@ const handleCommand = (command) => {
             break;
         case 'reservations':
             navigateTo('/profile?tab=rooms');
+            break;
+        case 'admin':
+            navigateTo('/admin');
             break;
         case 'logout':
             emit('logout');

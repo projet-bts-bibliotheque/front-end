@@ -111,7 +111,8 @@ const checkLoginStatus = async () => {
                 firstName: userData.first_name,
                 lastName: userData.last_name,
                 email: userData.email,
-                role: userData.role // ✅ S'assurer que le rôle est bien récupéré
+                role: userData.role, // ✅ IMPORTANT: Ajouter le rôle ici
+                avatar: userData.avatar || null
             };
         } catch (error) {
             console.error(
@@ -128,7 +129,7 @@ const checkLoginStatus = async () => {
                 firstName: '',
                 lastName: '',
                 email: '',
-                role: 0 // ✅ Réinitialiser le rôle
+                role: 0
             };
         }
     } else {
@@ -138,7 +139,7 @@ const checkLoginStatus = async () => {
             firstName: '',
             lastName: '',
             email: '',
-            role: 0 // ✅ Réinitialiser le rôle
+            role: 0
         };
     }
 };
@@ -178,18 +179,14 @@ const querySearch = (queryString, cb) => {
  * @returns {void}
  */
 const handleLogin = (loginData) => {
-    // Stockage du token déjà fait dans le composant LoginModal
-
-    // Mise à jour de l'état de connexion et des informations utilisateur
     isLoggedIn.value = true;
 
-    // ✅ Mise à jour avec toutes les informations utilisateur, y compris le rôle
     currentUser.value = {
         id: loginData.id,
         firstName: loginData.first_name,
         lastName: loginData.last_name,
         email: loginData.email,
-        role: loginData.role || 0 // ✅ S'assurer que le rôle est pris en compte
+        role: loginData.role
     };
 
     ElNotification({
@@ -233,23 +230,18 @@ const handleRegister = (userData) => {
  */
 const handleLogout = async () => {
     try {
-        // On pourrait ajouter un appel API pour invalider le token côté serveur
-        // mais ce n'est pas strictement nécessaire avec Laravel Sanctum
-
-        // Supprimer le token d'authentification seulement côté client
         if (process.client) {
             localStorage.removeItem('auth_token');
             sessionStorage.removeItem('auth_token');
         }
 
-        // Réinitialiser l'état de connexion
         isLoggedIn.value = false;
         currentUser.value = {
             id: null,
             firstName: '',
             lastName: '',
             email: '',
-            role: 0 // ✅ Réinitialiser le rôle
+            role: 0
         };
 
         ElNotification({
@@ -258,7 +250,6 @@ const handleLogout = async () => {
             type: 'success'
         });
 
-        // Rediriger vers la page d'accueil si nous sommes dans une zone protégée
         const route = useRoute();
         if (
             route.path.startsWith('/admin') ||
