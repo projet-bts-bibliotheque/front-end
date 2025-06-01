@@ -521,7 +521,6 @@ const handleCurrentChange = (val) => {
     currentPage.value = val;
 };
 
-// Actions utilisateur
 const openAddUserModal = () => {
     userModal.value.isEdit = false;
     userModal.value.form = {
@@ -536,6 +535,12 @@ const openAddUserModal = () => {
         confirmPassword: ''
     };
     userModal.value.visible = true;
+
+    console.log(
+        '🆕 Nouveau formulaire initialisé avec role:',
+        userModal.value.form.role,
+        typeof userModal.value.form.role
+    );
 };
 
 const editUser = (user) => {
@@ -547,11 +552,17 @@ const editUser = (user) => {
         email: user.email,
         phone: user.phone,
         address: user.address,
-        role: user.role,
+        role: Number(user.role),
         password: '',
         confirmPassword: ''
     };
     userModal.value.visible = true;
+
+    console.log(
+        '✏️ Édition utilisateur avec role:',
+        userModal.value.form.role,
+        typeof userModal.value.form.role
+    );
 };
 
 const closeUserModal = () => {
@@ -571,15 +582,21 @@ const saveUser = async () => {
         const api = (await import('@/services/api')).default;
 
         if (userModal.value.isEdit) {
-            // Mettre à jour l'utilisateur existant
             const userData = {
                 first_name: userModal.value.form.first_name,
                 last_name: userModal.value.form.last_name,
                 email: userModal.value.form.email,
                 address: userModal.value.form.address,
                 phone: userModal.value.form.phone,
-                role: userModal.value.form.role
+                role: Number(userModal.value.form.role)
             };
+
+            console.log('📤 Données de mise à jour envoyées:', userData);
+            console.log(
+                '🎭 Type du rôle:',
+                typeof userData.role,
+                userData.role
+            );
 
             await api.put(`/users/${userModal.value.form.id}`, userData);
 
@@ -588,7 +605,6 @@ const saveUser = async () => {
                 message: 'Utilisateur mis à jour avec succès'
             });
         } else {
-            // Ajouter un nouvel utilisateur
             const userData = {
                 first_name: userModal.value.form.first_name,
                 last_name: userModal.value.form.last_name,
@@ -596,8 +612,15 @@ const saveUser = async () => {
                 password: userModal.value.form.password,
                 address: userModal.value.form.address,
                 phone: userModal.value.form.phone,
-                role: userModal.value.form.role
+                role: Number(userModal.value.form.role)
             };
+
+            console.log('📤 Données de création envoyées:', userData);
+            console.log(
+                '🎭 Type du rôle:',
+                typeof userData.role,
+                userData.role
+            );
 
             await api.post('/register', userData);
 
@@ -607,7 +630,6 @@ const saveUser = async () => {
             });
         }
 
-        // Recharger les utilisateurs
         await loadUsers();
         userModal.value.visible = false;
     } catch (error) {
