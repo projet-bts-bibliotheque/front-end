@@ -12,7 +12,6 @@
         </div>
 
         <main class="catalog-content">
-            <!-- Barre de recherche avancée -->
             <SearchBar
                 v-model:searchText="searchQuery"
                 :categories="categoriesList"
@@ -594,6 +593,8 @@ const handleSearch = (text) => {
 
 // Gérer la recherche avancée
 const handleAdvancedSearch = (filters) => {
+    console.log('🔍 Recherche avancée reçue:', filters);
+
     // Mettre à jour la recherche textuelle
     searchQuery.value = filters.text || '';
 
@@ -603,20 +604,14 @@ const handleAdvancedSearch = (filters) => {
     // Traiter les auteurs
     selectedAuthors.value = filters.authors || [];
 
-    // Traiter la plage d'années
+    // Traiter la plage d'années - simplifiée
     if (filters.yearRange && Array.isArray(filters.yearRange)) {
-        const startYear =
-            typeof filters.yearRange[0] === 'object'
-                ? new Date(filters.yearRange[0]).getFullYear()
-                : filters.yearRange[0];
-        const endYear =
-            typeof filters.yearRange[1] === 'object'
-                ? new Date(filters.yearRange[1]).getFullYear()
-                : filters.yearRange[1];
-
-        yearRange.value = [startYear || 1900, endYear || 2025];
+        yearRange.value = [
+            filters.yearRange[0] || 1900,
+            filters.yearRange[1] || 2025
+        ];
     } else {
-        yearRange.value = [1900, 2025]; // Valeurs par défaut
+        yearRange.value = [1900, 2025];
     }
 
     // Traiter le filtre de disponibilité
@@ -624,6 +619,14 @@ const handleAdvancedSearch = (filters) => {
 
     // Réinitialiser la pagination
     currentPage.value = 1;
+
+    console.log('✅ Filtres appliqués:', {
+        searchQuery: searchQuery.value,
+        selectedCategories: selectedCategories.value,
+        selectedAuthors: selectedAuthors.value,
+        yearRange: yearRange.value,
+        availabilityFilter: availabilityFilter.value
+    });
 };
 
 // Réinitialiser la recherche

@@ -6,7 +6,9 @@
                 class="search-input"
                 :placeholder="placeholder || 'Rechercher un livre...'"
                 clearable
-                @change="emitSearch"
+                @input="handleInput"
+                @clear="handleClear"
+                @keyup.enter="emitSearch"
             >
                 <template #prefix>
                     <el-icon><Search /></el-icon>
@@ -73,14 +75,23 @@
                         </el-form-item>
 
                         <el-form-item label="Année de publication">
-                            <el-date-picker
-                                v-model="advancedForm.yearRange"
-                                type="yearrange"
-                                range-separator="-"
-                                start-placeholder="Début"
-                                end-placeholder="Fin"
-                                style="width: 100%"
-                            />
+                            <div class="year-inputs">
+                                <el-input-number
+                                    v-model="advancedForm.yearStart"
+                                    :min="1900"
+                                    :max="2025"
+                                    placeholder="De"
+                                    style="width: 100px"
+                                />
+                                <span>à</span>
+                                <el-input-number
+                                    v-model="advancedForm.yearEnd"
+                                    :min="1900"
+                                    :max="2025"
+                                    placeholder="À"
+                                    style="width: 100px"
+                                />
+                            </div>
                         </el-form-item>
                     </div>
 
@@ -111,8 +122,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
-import { Search, Setting, Close } from '@element-plus/icons-vue';
+import { ref, watch, reactive } from 'vue';
+import { Search, Close } from '@element-plus/icons-vue';
 
 const props = defineProps({
     searchText: {
@@ -126,6 +137,10 @@ const props = defineProps({
     authors: {
         type: Array,
         default: () => []
+    },
+    placeholder: {
+        type: String,
+        default: 'Rechercher un livre...'
     }
 });
 
@@ -138,11 +153,19 @@ const emit = defineEmits([
 
 // Variables locales
 const localSearchText = ref(props.searchText);
-const advancedSearch = ref(false);
-const categoryFilter = ref([]);
-const authorFilter = ref([]);
-const yearRange = ref([new Date(1900, 0, 1), new Date()]);
-const availabilityFilter = ref('all');
+const advancedMode = ref(false);
+
+// Formulaire de recherche avancée
+const advancedForm = reactive({
+    text: '',
+    categories: [],
+    authors: [],
+    yearStart: 1900,
+    yearEnd: 2025,
+    availability: 'all'
+});
+
+// Timeout pour le debounce
 let searchTimeout = null;
 
 // Mettre à jour la valeur locale lorsque la prop change
@@ -150,20 +173,24 @@ watch(
     () => props.searchText,
     (newVal) => {
         localSearchText.value = newVal;
+        advancedForm.text = newVal;
     }
 );
 
-// Handlers pour les entrées de recherche avec debounce
+// Handlers pour les entrées de recherche
 const handleInput = () => {
     emit('update:searchText', localSearchText.value);
 
-    // Annuler le timeout précédent s'il existe
+    // Annuler le timeout précédent
     if (searchTimeout) {
         clearTimeout(searchTimeout);
     }
 
-    // N'émettre la recherche qu'après 300ms d'inactivité et si le texte a au moins 3 caractères
-    if (localSearchText.value.length > 2) {
+    // Ne déclencher la recherche qu'après 300ms sans saisie
+    if (
+        localSearchText.value.length >= 2 ||
+        localSearchText.value.length === 0
+    ) {
         searchTimeout = setTimeout(() => {
             emit('search', localSearchText.value);
         }, 300);
@@ -176,33 +203,51 @@ const handleClear = () => {
     emit('search', '');
 };
 
-// Toggle pour la recherche avancée
-const toggleAdvancedSearch = () => {
-    advancedSearch.value = !advancedSearch.value;
+const emitSearch = () => {
+    emit('search', localSearchText.value);
 };
 
-// Réinitialiser les filtres de recherche avancée
-const resetAdvancedSearch = () => {
-    categoryFilter.value = [];
-    authorFilter.value = [];
-    yearRange.value = [new Date(1900, 0, 1), new Date()];
-    availabilityFilter.value = 'all';
+// Gestion de la recherche avancée
+const showAdvanced = () => {
+    advancedMode.value = true;
+    advancedForm.text = localSearchText.value;
+};
 
+const hideAdvanced = () => {
+    advancedMode.value = false;
+};
+
+const resetAdvancedSearch = () => {
+    Object.assign(advancedForm, {
+        text: '',
+        categories: [],
+        authors: [],
+        yearStart: 1900,
+        yearEnd: 2025,
+        availability: 'all'
+    });
+
+    localSearchText.value = '';
+    emit('update:searchText', '');
     emit('reset');
 };
 
-// Appliquer les filtres de recherche avancée
-const applyAdvancedSearch = () => {
-    // Préparer les filtres avec les valeurs par défaut pour éviter les undefined
+const submitAdvancedSearch = () => {
+    // Mettre à jour le texte de recherche simple
+    localSearchText.value = advancedForm.text;
+    emit('update:searchText', advancedForm.text);
+
+    // Émettre la recherche avancée avec les données formatées
     const filters = {
-        text: localSearchText.value || '',
-        categories: categoryFilter.value || [],
-        authors: authorFilter.value || [],
-        yearRange: yearRange.value || [new Date(1900, 0, 1), new Date()],
-        availability: availabilityFilter.value || 'all'
+        text: advancedForm.text,
+        categories: advancedForm.categories,
+        authors: advancedForm.authors,
+        yearRange: [advancedForm.yearStart, advancedForm.yearEnd],
+        availability: advancedForm.availability
     };
 
     emit('advancedSearch', filters);
+    advancedMode.value = false;
 };
 </script>
 
@@ -246,6 +291,12 @@ const applyAdvancedSearch = () => {
 .form-column {
     flex: 1;
     min-width: 250px;
+}
+
+.year-inputs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .advanced-search-actions {
