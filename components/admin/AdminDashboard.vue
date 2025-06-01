@@ -13,84 +13,23 @@
         <div class="dashboard-sections">
             <div class="dashboard-section">
                 <h3 class="section-title">
-                    <el-icon><Clock /></el-icon>
-                    Activité récente
-                </h3>
-                <div class="content-card">
-                    <el-timeline>
-                        <el-timeline-item
-                            v-for="(activity, index) in recentActivities"
-                            :key="index"
-                            :timestamp="activity.date"
-                            :type="activity.type"
-                        >
-                            {{ activity.content }}
-                        </el-timeline-item>
-                    </el-timeline>
-                </div>
-            </div>
-
-            <div class="dashboard-section">
-                <h3 class="section-title">
-                    <el-icon><Warning /></el-icon>
-                    Alertes
-                </h3>
-                <div class="content-card">
-                    <div v-if="alerts.length === 0" class="empty-state">
-                        <el-icon :size="60" class="empty-icon"
-                            ><CircleCheckFilled
-                        /></el-icon>
-                        <p>Aucune alerte à traiter actuellement.</p>
-                    </div>
-                    <el-collapse v-else accordion>
-                        <el-collapse-item
-                            v-for="(alert, index) in alerts"
-                            :key="index"
-                            :title="alert.title"
-                        >
-                            <div class="alert-content">
-                                <p>{{ alert.description }}</p>
-                                <div class="alert-actions">
-                                    <el-button
-                                        size="small"
-                                        type="primary"
-                                        @click="handleAlert(alert)"
-                                    >
-                                        {{ alert.actionLabel }}
-                                    </el-button>
-                                    <el-button
-                                        size="small"
-                                        @click="dismissAlert(index)"
-                                    >
-                                        Ignorer
-                                    </el-button>
-                                </div>
-                            </div>
-                        </el-collapse-item>
-                    </el-collapse>
-                </div>
-            </div>
-        </div>
-
-        <div class="dashboard-sections">
-            <div class="dashboard-section">
-                <h3 class="section-title">
                     <el-icon><Reading /></el-icon>
                     Emprunts récents
                 </h3>
                 <div class="content-card">
-                    <el-table :data="recentBorrows" stripe>
+                    <div v-if="recentBorrows.length === 0" class="empty-state">
+                        <el-icon :size="60" class="empty-icon">
+                            <CircleCheckFilled />
+                        </el-icon>
+                        <p>Aucun emprunt récent.</p>
+                    </div>
+                    <el-table v-else :data="recentBorrows" stripe>
                         <el-table-column prop="bookTitle" label="Livre" />
                         <el-table-column prop="userName" label="Utilisateur" />
                         <el-table-column
                             prop="borrowDate"
                             label="Date d'emprunt"
-                            width="120"
-                        />
-                        <el-table-column
-                            prop="dueDate"
-                            label="Date de retour"
-                            width="120"
+                            width="150"
                         />
                         <el-table-column
                             prop="status"
@@ -113,29 +52,109 @@
             <div class="dashboard-section">
                 <h3 class="section-title">
                     <el-icon><Calendar /></el-icon>
-                    Prochaines réservations
+                    Réservations de salles récentes
                 </h3>
                 <div class="content-card">
-                    <el-table :data="upcomingReservations" stripe>
-                        <el-table-column prop="roomName" label="Salle" />
+                    <div
+                        v-if="recentRoomReservations.length === 0"
+                        class="empty-state"
+                    >
+                        <el-icon :size="60" class="empty-icon">
+                            <CircleCheckFilled />
+                        </el-icon>
+                        <p>Aucune réservation de salle récente.</p>
+                    </div>
+                    <el-table v-else :data="recentRoomReservations" stripe>
+                        <el-table-column label="Salle" width="100">
+                            <template #default="{ row }">
+                                Salle n°{{ row.roomId }}
+                            </template>
+                        </el-table-column>
                         <el-table-column prop="userName" label="Utilisateur" />
-                        <el-table-column prop="date" label="Date" width="100" />
+                        <el-table-column prop="date" label="Date" width="120" />
                         <el-table-column
-                            prop="timeSlot"
-                            label="Horaire"
-                            width="110"
+                            prop="status"
+                            label="Statut"
+                            width="120"
                         >
                             <template #default="{ row }">
-                                {{ formatTimeSlot(row.timeSlot) }}
+                                <el-tag
+                                    :type="getRoomStatusType(row.status)"
+                                    size="small"
+                                >
+                                    {{ getRoomStatusLabel(row.status) }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-sections">
+            <div class="dashboard-section">
+                <h3 class="section-title">
+                    <el-icon><User /></el-icon>
+                    Utilisateurs récents
+                </h3>
+                <div class="content-card">
+                    <div v-if="recentUsers.length === 0" class="empty-state">
+                        <el-icon :size="60" class="empty-icon">
+                            <CircleCheckFilled />
+                        </el-icon>
+                        <p>Aucun nouvel utilisateur récemment.</p>
+                    </div>
+                    <el-table v-else :data="recentUsers" stripe>
+                        <el-table-column prop="name" label="Nom" />
+                        <el-table-column prop="email" label="Email" />
+                        <el-table-column prop="role" label="Rôle" width="140">
+                            <template #default="{ row }">
+                                <el-tag
+                                    :type="getRoleTagType(row.role)"
+                                    size="small"
+                                >
+                                    {{ getRoleLabel(row.role) }}
+                                </el-tag>
                             </template>
                         </el-table-column>
                         <el-table-column
-                            prop="purpose"
-                            label="Motif"
-                            width="150"
-                        >
+                            prop="memberSince"
+                            label="Inscrit le"
+                            width="120"
+                        />
+                    </el-table>
+                </div>
+            </div>
+
+            <div class="dashboard-section">
+                <h3 class="section-title">
+                    <el-icon><Reading /></el-icon>
+                    Livres les plus populaires
+                </h3>
+                <div class="content-card">
+                    <div v-if="popularBooks.length === 0" class="empty-state">
+                        <el-icon :size="60" class="empty-icon">
+                            <CircleCheckFilled />
+                        </el-icon>
+                        <p>Aucune donnée de popularité disponible.</p>
+                    </div>
+                    <el-table v-else :data="popularBooks" stripe>
+                        <el-table-column prop="title" label="Titre" />
+                        <el-table-column prop="author" label="Auteur" />
+                        <el-table-column
+                            prop="borrowCount"
+                            label="Emprunts"
+                            width="100"
+                        />
+                        <el-table-column prop="rating" label="Note" width="100">
                             <template #default="{ row }">
-                                {{ getPurposeLabel(row.purpose) }}
+                                <el-rate
+                                    v-model="row.rating"
+                                    disabled
+                                    size="small"
+                                    show-score
+                                    text-color="#ff9900"
+                                />
                             </template>
                         </el-table-column>
                     </el-table>
@@ -146,139 +165,189 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import {
     Reading,
     OfficeBuilding,
     User,
     Calendar,
-    Clock,
-    Warning,
     CircleCheckFilled
 } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
-// Statistiques
+// Statistiques principales
 const stats = ref([
-    { label: 'Livres', value: '10,847', icon: Reading },
-    { label: 'Salles', value: '15', icon: OfficeBuilding },
-    { label: 'Membres', value: '5,234', icon: User },
-    { label: 'Emprunts actifs', value: '327', icon: Calendar }
+    { label: 'Livres', value: '0', icon: Reading },
+    { label: 'Salles', value: '0', icon: OfficeBuilding },
+    { label: 'Utilisateurs', value: '0', icon: User },
+    { label: 'Emprunts actifs', value: '0', icon: Calendar }
 ]);
 
-// Activités récentes
-const recentActivities = ref([
-    {
-        date: '2025-04-09 14:30',
-        type: 'primary',
-        content:
-            'Paul Dupont a emprunté "Le Petit Prince" de Antoine de Saint-Exupéry'
-    },
-    {
-        date: '2025-04-09 11:15',
-        type: 'success',
-        content: 'Marie Martin a retourné "1984" de George Orwell'
-    },
-    {
-        date: '2025-04-08 10:22',
-        type: 'warning',
-        content:
-            'La réservation de la salle B2 par Thomas Laurent a été annulée'
-    },
-    {
-        date: '2025-04-08 16:45',
-        type: 'info',
-        content: 'Un nouveau livre a été ajouté : "Dune" de Frank Herbert'
-    },
-    {
-        date: '2025-04-08 15:10',
-        type: 'success',
-        content: 'Nouveau membre inscrit : Sophie Moreau'
+// Données du tableau de bord
+const recentBorrows = ref([]);
+const recentRoomReservations = ref([]);
+const recentUsers = ref([]);
+const popularBooks = ref([]);
+
+// État de chargement
+const loading = ref(true);
+
+// Charger toutes les données du tableau de bord
+const loadDashboardData = async () => {
+    loading.value = true;
+    try {
+        const api = (await import('@/services/api')).default;
+
+        // Charger toutes les données en parallèle
+        const [
+            booksData,
+            roomsData,
+            usersData,
+            bookReservationsData,
+            roomReservationsData,
+            authorsData
+        ] = await Promise.all([
+            api.get('/books').catch(() => []),
+            api.get('/rooms').catch(() => []),
+            api.get('/users').catch(() => []),
+            api.get('/reservation/books').catch(() => []),
+            api.get('/reservation/rooms').catch(() => []),
+            api.get('/authors').catch(() => [])
+        ]);
+
+        // Mettre à jour les statistiques
+        const activeBookReservations = bookReservationsData.filter(
+            (r) => !r.return_date
+        );
+
+        stats.value = [
+            {
+                label: 'Livres',
+                value: booksData.length.toString(),
+                icon: Reading
+            },
+            {
+                label: 'Salles',
+                value: roomsData.length.toString(),
+                icon: OfficeBuilding
+            },
+            {
+                label: 'Utilisateurs',
+                value: usersData.length.toString(),
+                icon: User
+            },
+            {
+                label: 'Emprunts actifs',
+                value: activeBookReservations.length.toString(),
+                icon: Calendar
+            }
+        ];
+
+        // Créer un map des auteurs pour accès rapide
+        const authorsMap = {};
+        authorsData.forEach((author) => {
+            authorsMap[author.id] = `${author.firstname} ${author.lastname}`;
+        });
+
+        // Créer un map des utilisateurs pour accès rapide
+        const usersMap = {};
+        usersData.forEach((user) => {
+            usersMap[user.id] = `${user.first_name} ${user.last_name}`;
+        });
+
+        // Créer un map des livres pour accès rapide
+        const booksMap = {};
+        booksData.forEach((book) => {
+            booksMap[book.isbn] = {
+                title: book.title,
+                author: authorsMap[book.author] || 'Auteur inconnu'
+            };
+        });
+
+        // Traiter les emprunts récents (limité aux 10 plus récents)
+        recentBorrows.value = bookReservationsData
+            .sort((a, b) => new Date(b.start) - new Date(a.start))
+            .slice(0, 10)
+            .map((reservation) => ({
+                bookTitle:
+                    booksMap[reservation.book_id]?.title || 'Livre inconnu',
+                userName:
+                    usersMap[reservation.user_id] || 'Utilisateur inconnu',
+                borrowDate: new Date(reservation.start).toLocaleDateString(
+                    'fr-FR'
+                ),
+                status: reservation.return_date ? 'returned' : 'active'
+            }));
+
+        // Traiter les réservations de salles récentes (limité aux 10 plus récentes)
+        recentRoomReservations.value = roomReservationsData
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 10)
+            .map((reservation) => ({
+                roomId: reservation.room_id,
+                userName:
+                    usersMap[reservation.user_id] || 'Utilisateur inconnu',
+                date: new Date(reservation.date).toLocaleDateString('fr-FR'),
+                status:
+                    new Date(reservation.date) < new Date()
+                        ? 'past'
+                        : 'upcoming'
+            }));
+
+        // Traiter les utilisateurs récents (limité aux 5 plus récents)
+        recentUsers.value = usersData
+            .sort(
+                (a, b) =>
+                    new Date(b.created_at || 0) - new Date(a.created_at || 0)
+            )
+            .slice(0, 5)
+            .map((user) => ({
+                name: `${user.first_name} ${user.last_name}`,
+                email: user.email,
+                role: user.role,
+                memberSince: user.created_at
+                    ? new Date(user.created_at).toLocaleDateString('fr-FR')
+                    : 'Date inconnue'
+            }));
+
+        // Calculer les livres les plus populaires basés sur les emprunts
+        const bookBorrowCounts = {};
+        bookReservationsData.forEach((reservation) => {
+            const bookId = reservation.book_id;
+            bookBorrowCounts[bookId] = (bookBorrowCounts[bookId] || 0) + 1;
+        });
+
+        // Créer la liste des livres populaires
+        popularBooks.value = Object.entries(bookBorrowCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([bookId, count]) => {
+                const bookData = booksData.find((book) => book.isbn === bookId);
+                return {
+                    title: bookData?.title || 'Livre inconnu',
+                    author: authorsMap[bookData?.author] || 'Auteur inconnu',
+                    borrowCount: count,
+                    rating: parseFloat(bookData?.average_rating) || 0
+                };
+            });
+    } catch (error) {
+        console.error(
+            'Erreur lors du chargement des données du tableau de bord:',
+            error
+        );
+        ElMessage.error(
+            'Erreur lors du chargement des données du tableau de bord'
+        );
+    } finally {
+        loading.value = false;
     }
-]);
+};
 
-// Alertes
-const alerts = ref([
-    {
-        id: 1,
-        title: '5 livres en retard de retour',
-        description:
-            "Plusieurs membres n'ont pas retourné leurs livres à temps. Vous devriez les contacter.",
-        actionLabel: 'Voir les détails',
-        action: 'viewLateBorrows'
-    },
-    {
-        id: 2,
-        title: 'Mise à jour du système disponible',
-        description:
-            'Une nouvelle version du système de gestion de bibliothèque est disponible. Il est recommandé de mettre à jour dès que possible.',
-        actionLabel: 'Mettre à jour',
-        action: 'updateSystem'
-    }
-]);
-
-// Emprunts récents
-const recentBorrows = ref([
-    {
-        id: 1,
-        bookTitle: 'Le Petit Prince',
-        userName: 'Paul Dupont',
-        borrowDate: '09/04/2025',
-        dueDate: '23/04/2025',
-        status: 'active'
-    },
-    {
-        id: 2,
-        bookTitle: '1984',
-        userName: 'Marie Martin',
-        borrowDate: '05/04/2025',
-        dueDate: '19/04/2025',
-        status: 'returned'
-    },
-    {
-        id: 3,
-        bookTitle: 'Les Misérables',
-        userName: 'Thomas Laurent',
-        borrowDate: '25/03/2025',
-        dueDate: '08/04/2025',
-        status: 'late'
-    }
-]);
-
-// Prochaines réservations
-const upcomingReservations = ref([
-    {
-        id: 1,
-        roomName: 'Salle de groupe B2',
-        userName: 'Sophie Moreau',
-        date: '10/04/2025',
-        timeSlot: '09-11',
-        purpose: 'group'
-    },
-    {
-        id: 2,
-        roomName: 'Salle de conférence C1',
-        userName: 'Paul Dupont',
-        date: '11/04/2025',
-        timeSlot: '14-16',
-        purpose: 'presentation'
-    },
-    {
-        id: 3,
-        roomName: 'Laboratoire D3',
-        userName: 'Marie Martin',
-        date: '12/04/2025',
-        timeSlot: '16-18',
-        purpose: 'study'
-    }
-]);
-
-// Fonctions utilitaires
+// Fonctions utilitaires pour les statuts
 const getBorrowStatusLabel = (status) => {
     switch (status) {
         case 'active':
             return 'En cours';
-        case 'late':
-            return 'En retard';
         case 'returned':
             return 'Retourné';
         default:
@@ -289,9 +358,7 @@ const getBorrowStatusLabel = (status) => {
 const getBorrowStatusType = (status) => {
     switch (status) {
         case 'active':
-            return 'info';
-        case 'late':
-            return 'danger';
+            return 'warning';
         case 'returned':
             return 'success';
         default:
@@ -299,39 +366,60 @@ const getBorrowStatusType = (status) => {
     }
 };
 
-const formatTimeSlot = (timeSlot) => {
-    const timeSlots = {
-        '09-11': '9h - 11h',
-        '11-13': '11h - 13h',
-        '14-16': '14h - 16h',
-        '16-18': '16h - 18h',
-        '18-20': '18h - 20h'
-    };
-
-    return timeSlots[timeSlot] || timeSlot;
+const getRoomStatusLabel = (status) => {
+    switch (status) {
+        case 'upcoming':
+            return 'À venir';
+        case 'past':
+            return 'Passée';
+        default:
+            return status;
+    }
 };
 
-const getPurposeLabel = (purpose) => {
-    const purposes = {
-        group: 'Travail de groupe',
-        presentation: 'Présentation',
-        meeting: 'Réunion',
-        study: 'Étude'
-    };
-
-    return purposes[purpose] || purpose;
+const getRoomStatusType = (status) => {
+    switch (status) {
+        case 'upcoming':
+            return 'warning';
+        case 'past':
+            return 'info';
+        default:
+            return 'info';
+    }
 };
 
-// Fonctions pour les actions
-const handleAlert = (alert) => {
-    console.log(`Handling alert: ${alert.action}`);
-    // Logique à implémenter en fonction du type d'alerte
+const getRoleLabel = (role) => {
+    switch (role) {
+        case 2:
+            return 'Administrateur';
+        case 1:
+            return 'Bibliothécaire';
+        case 0:
+            return 'Membre';
+        default:
+            return 'Membre';
+    }
 };
 
-const dismissAlert = (index) => {
-    alerts.value.splice(index, 1);
+const getRoleTagType = (role) => {
+    switch (role) {
+        case 2:
+            return 'danger';
+        case 1:
+            return 'warning';
+        case 0:
+            return 'info';
+        default:
+            return 'info';
+    }
 };
+
+// Charger les données au montage du composant
+onMounted(() => {
+    loadDashboardData();
+});
 </script>
+
 <style scoped>
 @import './CommonAdminStyle.css';
 
@@ -414,17 +502,6 @@ const dismissAlert = (index) => {
     flex-grow: 1;
 }
 
-.alert-content {
-    padding: 5px 0;
-}
-
-.alert-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 10px;
-}
-
 .empty-state {
     text-align: center;
     padding: 30px 0;
@@ -433,6 +510,11 @@ const dismissAlert = (index) => {
 .empty-icon {
     color: #4caf50;
     margin-bottom: 15px;
+}
+
+.empty-state p {
+    color: #666;
+    margin: 0;
 }
 
 /* Responsive */
