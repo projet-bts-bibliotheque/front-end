@@ -582,10 +582,7 @@ const handleCurrentChange = (val) => {
 };
 
 const openAddBookModal = async () => {
-    // Charger les auteurs et éditeurs si pas encore fait
-    if (authors.value.length === 0 || editors.value.length === 0) {
-        await loadAuthorsAndEditors();
-    }
+    await loadAuthorsAndEditors();
 
     bookModal.value.isEdit = false;
     bookModal.value.form = {
@@ -604,7 +601,6 @@ const openAddBookModal = async () => {
     bookModal.value.visible = true;
 };
 const editBook = async (book) => {
-    // Charger les auteurs et éditeurs si pas encore fait
     if (authors.value.length === 0 || editors.value.length === 0) {
         await loadAuthorsAndEditors();
     }
@@ -640,31 +636,26 @@ const saveBook = async () => {
             isbn: bookModal.value.form.isbn,
             title: bookModal.value.form.title,
             thumbnail:
-                bookModal.value.form.coverUrl || '/api/placeholder/150/220', // ← Ajout d'une valeur par défaut
+                bookModal.value.form.coverUrl || '/api/placeholder/150/220',
             author: bookModal.value.form.authorId,
             editor: bookModal.value.form.editorId,
             average_rating: bookModal.value.form.rating || 0,
             ratings_count: 0,
-            keywords: [bookModal.value.form.category || 'non-catégorisé'], // ← Valeur par défaut
-            summary: bookModal.value.form.description || '', // ← Valeur par défaut
+            keywords: [bookModal.value.form.category || 'non-catégorisé'],
+            summary: bookModal.value.form.description || '',
             publish_year: bookModal.value.form.year,
-            pages: bookModal.value.form.pages || 0, // ← Ajout du champ pages
-            language: bookModal.value.form.language || 'Français' // to remove
+            pages: bookModal.value.form.pages || 0,
+            language: bookModal.value.form.language || 'Français'
         };
 
-        console.log('📤 Données envoyées:', bookData); // Pour debug
-
         if (bookModal.value.isEdit) {
-            // Mettre à jour le livre existant
             await api.put(`/books/${bookModal.value.form.isbn}`, bookData);
             ElMessage.success('Livre mis à jour avec succès');
         } else {
-            // Ajouter un nouveau livre
             await api.post('/books', bookData);
             ElMessage.success('Livre ajouté avec succès');
         }
 
-        // Recharger les livres
         await loadBooks();
         bookModal.value.visible = false;
     } catch (error) {
@@ -683,7 +674,6 @@ const toggleBookAvailability = async (book) => {
         const api = (await import('@/services/api')).default;
 
         if (book.available) {
-            // Si le livre est disponible, créer une réservation fictive pour le rendre indisponible
             await api.bookReservations.create(book.isbn);
 
             ElMessage({
@@ -691,7 +681,6 @@ const toggleBookAvailability = async (book) => {
                 message: `Le livre "${book.title}" est maintenant indisponible`
             });
         } else {
-            // Si indisponible, marquer comme retourné
             await api.bookReservations.return(book.isbn);
 
             ElMessage({
@@ -700,7 +689,6 @@ const toggleBookAvailability = async (book) => {
             });
         }
 
-        // Recharger les livres
         await loadBooks();
     } catch (error) {
         console.error(
