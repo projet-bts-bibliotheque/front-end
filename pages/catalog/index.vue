@@ -306,6 +306,7 @@
 defineOptions({
     name: 'CatalogPage'
 });
+import { useRoute } from 'vue-router';
 import { ref, computed, onMounted, watch } from 'vue';
 import { ElNotification } from 'element-plus';
 import { Grid, Menu, Filter } from '@element-plus/icons-vue';
@@ -324,7 +325,7 @@ const loginForm = ref({
     email: '',
     password: ''
 });
-
+const route = useRoute();
 const registerForm = ref({
     firstName: '',
     lastName: '',
@@ -428,7 +429,9 @@ onMounted(async () => {
             description: book.summary || ''
         }));
 
-        console.log('Livres chargés:', allBooks.value);
+        if (route.query.search) {
+            searchQuery.value = route.query.search;
+        }
     } catch (error) {
         console.error('Erreur lors du chargement des livres:', error);
         ElNotification({
@@ -445,12 +448,16 @@ onMounted(async () => {
     }
 });
 
+watch(
+    () => route.query.search,
+    (newSearch) => {
+        if (newSearch) {
+            searchQuery.value = newSearch;
+        }
+    }
+);
+
 // Fonction pour déterminer si un livre est emprunté
-// Ceci est une implémentation temporaire - à remplacer par des données réelles
-const getIsBookBorrowed = (isbn) => {
-    // Dans une implémentation réelle, on vérifierait si ce livre a une réservation active
-    return Math.random() > 0.7; // 30% des livres seront marqués comme non disponibles
-};
 
 // Fonction pour obtenir le nom de l'auteur à partir de son ID
 const getAuthorName = (authorId, authors) => {

@@ -78,13 +78,41 @@ const currentUser = ref({
     id: null,
     firstName: '',
     lastName: '',
-    email: ''
+    email: '',
+    role: 0
 });
+
+// Données pour la recherche
+const allBooks = ref([]);
+const allAuthors = ref([]);
 
 // Vérifier l'état de connexion au chargement
 onMounted(async () => {
     await checkLoginStatus();
+    await loadBooksData();
 });
+
+// Charger les données des livres pour la recherche
+const loadBooksData = async () => {
+    try {
+        const api = (await import('@/services/api')).default;
+        const [books, authors] = await Promise.all([
+            api.get('/books'),
+            api.get('/authors')
+        ]);
+
+        allBooks.value = books;
+        allAuthors.value = authors;
+    } catch (error) {
+        console.error(
+            'Erreur lors du chargement des données de recherche:',
+            error
+        );
+        // Les données de recherche ne sont pas critiques, on continue
+        allBooks.value = [];
+        allAuthors.value = [];
+    }
+};
 
 // Vérifier si l'utilisateur est connecté en vérifiant le localStorage ou sessionStorage
 const checkLoginStatus = async () => {
@@ -111,7 +139,7 @@ const checkLoginStatus = async () => {
                 firstName: userData.first_name,
                 lastName: userData.last_name,
                 email: userData.email,
-                role: userData.role, // ✅ IMPORTANT: Ajouter le rôle ici
+                role: userData.role,
                 avatar: userData.avatar || null
             };
         } catch (error) {
@@ -144,9 +172,6 @@ const checkLoginStatus = async () => {
     }
 };
 
-// Sample books data for search autocomplete
-const sampleBooks = [{}];
-
 /**
  * Effectue une recherche de livres en fonction d'une chaîne de requête
  * @param {string} queryString - La chaîne de caractères à rechercher
@@ -154,25 +179,48 @@ const sampleBooks = [{}];
  * @returns {void}
  */
 const querySearch = (queryString, cb) => {
-    const results = queryString
-        ? sampleBooks.filter((book) => {
-              return (
-                  book.title
-                      .toLowerCase()
-                      .includes(queryString.toLowerCase()) ||
-                  book.author.toLowerCase().includes(queryString.toLowerCase())
-              );
-          })
-        : [];
-    // Format uniforme pour les résultats de suggestion
-    cb(results.map((book) => ({ value: book.title, book })));
+    if (!queryString || queryString.length < 2) {
+        cb([]);
+        return;
+    }
+
+    try {
+        // Créer un map des auteurs pour un accès rapide
+        const authorsMap = {};
+        allAuthors.value.forEach((author) => {
+            authorsMap[author.id] = `${author.firstname} ${author.lastname}`;
+        });
+
+        // Filtrer les livres qui correspondent à la recherche
+        const results = allBooks.value
+            .filter((book) => {
+                const authorName = authorsMap[book.author] || '';
+                const query = queryString.toLowerCase();
+                return (
+                    book.title.toLowerCase().includes(query) ||
+                    authorName.toLowerCase().includes(query)
+                );
+            })
+            .slice(0, 8) // Limiter à 8 résultats pour de meilleures performances
+            .map((book) => ({
+                value: book.title,
+                label: book.title,
+                author: authorsMap[book.author] || 'Auteur inconnu',
+                book: {
+                    id: book.isbn,
+                    isbn: book.isbn,
+                    title: book.title,
+                    author: authorsMap[book.author] || 'Auteur inconnu'
+                }
+            }));
+
+        cb(results);
+    } catch (error) {
+        console.error('Erreur lors de la recherche:', error);
+        cb([]);
+    }
 };
 
-/**
- * Gère l'action de connexion utilisateur
- * @param {Object} loginData - Données de connexion avec token
- * @returns {void}
- */
 /**
  * Gère l'action de connexion utilisateur
  * @param {Object} loginData - Données de connexion avec token
@@ -214,7 +262,7 @@ const handleRegister = (userData) => {
         firstName: userData.first_name,
         lastName: userData.last_name,
         email: userData.email,
-        role: 0 // ✅ Nouveau utilisateur = membre (rôle 0)
+        role: 0 // Nouveau utilisateur = membre (rôle 0)
     };
 
     ElNotification({
@@ -267,6 +315,7 @@ const handleLogout = async () => {
         });
     }
 };
+
 /**
  * Traite une demande de réinitialisation de mot de passe
  * @param {string} email - Adresse email pour laquelle réinitialiser le mot de passe
