@@ -78,7 +78,7 @@
                             <div class="year-inputs">
                                 <el-input-number
                                     v-model="advancedForm.yearStart"
-                                    :min="1900"
+                                    :min="0"
                                     :max="2025"
                                     placeholder="De"
                                     style="width: 100px"
@@ -86,7 +86,7 @@
                                 <span>à</span>
                                 <el-input-number
                                     v-model="advancedForm.yearEnd"
-                                    :min="1900"
+                                    :min="0"
                                     :max="2025"
                                     placeholder="À"
                                     style="width: 100px"
@@ -151,24 +151,20 @@ const emit = defineEmits([
     'reset'
 ]);
 
-// Variables locales
 const localSearchText = ref(props.searchText);
 const advancedMode = ref(false);
 
-// Formulaire de recherche avancée
 const advancedForm = reactive({
     text: '',
     categories: [],
     authors: [],
-    yearStart: 1900,
+    yearStart: 0,
     yearEnd: 2025,
     availability: 'all'
 });
 
-// Timeout pour le debounce
 let searchTimeout = null;
 
-// Mettre à jour la valeur locale lorsque la prop change
 watch(
     () => props.searchText,
     (newVal) => {
@@ -177,16 +173,13 @@ watch(
     }
 );
 
-// Handlers pour les entrées de recherche
 const handleInput = () => {
     emit('update:searchText', localSearchText.value);
 
-    // Annuler le timeout précédent
     if (searchTimeout) {
         clearTimeout(searchTimeout);
     }
 
-    // Ne déclencher la recherche qu'après 300ms sans saisie
     if (
         localSearchText.value.length >= 2 ||
         localSearchText.value.length === 0
@@ -207,7 +200,6 @@ const emitSearch = () => {
     emit('search', localSearchText.value);
 };
 
-// Gestion de la recherche avancée
 const showAdvanced = () => {
     advancedMode.value = true;
     advancedForm.text = localSearchText.value;
@@ -222,7 +214,7 @@ const resetAdvancedSearch = () => {
         text: '',
         categories: [],
         authors: [],
-        yearStart: 1900,
+        yearStart: 0,
         yearEnd: 2025,
         availability: 'all'
     });
@@ -233,11 +225,9 @@ const resetAdvancedSearch = () => {
 };
 
 const submitAdvancedSearch = () => {
-    // Mettre à jour le texte de recherche simple
     localSearchText.value = advancedForm.text;
     emit('update:searchText', advancedForm.text);
 
-    // Émettre la recherche avancée avec les données formatées
     const filters = {
         text: advancedForm.text,
         categories: advancedForm.categories,

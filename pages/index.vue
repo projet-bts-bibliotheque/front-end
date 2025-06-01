@@ -54,12 +54,13 @@ import NewsletterSection from '~/components/home/NewsletterSection.vue';
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
 const newsletterEmail = ref('');
-const rooms = ref([]);
 
-// ✅ AJOUT DE LA VARIABLE MANQUANTE
-const isLoading = ref(false);
+// États pour les données
+const isLoading = ref(true);
+const allBooks = ref([]);
+const authors = ref([]);
 
-// ✅ AJOUT DES VARIABLES MANQUANTES POUR LA RÉSERVATION
+// Variables pour la réservation
 const showReservationModal = ref(false);
 const showConfirmationModal = ref(false);
 const selectedRoom = ref(null);
@@ -75,68 +76,19 @@ const reservationForm = ref({
     acceptTerms: false
 });
 
-async function loadRooms() {
-    isLoading.value = true;
-    try {
-        // Importer le service API
-        const api = (await import('@/services/api')).default;
-
-        // Récupérer les salles depuis l'API
-        const roomsData = await api.get('/rooms');
-
-        // Transformer les données pour notre interface
-        rooms.value = roomsData.map((room) => ({
-            id: room.id,
-            name: room.name,
-            type: room.type || 'Standard', // Valeur par défaut si non spécifiée
-            capacity: room.places,
-            dimension: room.dimension || 0,
-            floor: room.floor || 'Étage non spécifié',
-            features: room.features || ['wifi'], // Par défaut, wifi disponible
-            popular: room.popular || false,
-            imageUrl: room.image_url || '/api/placeholder/400/250?text=Salle',
-            description: room.description || 'Aucune description disponible.'
-        }));
-    } catch (error) {
-        console.error('Erreur lors du chargement des salles:', error);
-
-        ElNotification({
-            title: 'Erreur',
-            message:
-                'Impossible de charger les salles. Veuillez réessayer plus tard.',
-            type: 'error'
-        });
-
-        // En cas d'erreur, utiliser un tableau vide
-        rooms.value = [];
-    } finally {
-        isLoading.value = false;
-    }
-}
-
-// Données de livres
-const sampleBooks = [{}];
-
-// Configuration des catégories de livres
+// Configuration des catégories de livres (initialement vides)
 const categories = ref([
     {
         title: 'Dernières acquisitions',
-        books: [...sampleBooks].sort(() => 0.5 - Math.random())
+        books: []
     },
     {
         title: 'Les mieux notés',
-        books: [...sampleBooks].sort((a, b) => b.rating - a.rating)
+        books: []
     },
     {
         title: 'Classiques de la littérature',
-        books: [...sampleBooks].filter((book) =>
-            [
-                'Victor Hugo',
-                'Albert Camus',
-                'Antoine de Saint-Exupéry',
-                'Alexandre Dumas'
-            ].includes(book.author)
-        )
+        books: []
     }
 ]);
 
@@ -148,11 +100,144 @@ const gapWidth = ref(16);
 const visibleItems = ref(4);
 
 /**
+ * Charge les livres depuis l'API et les organise par catégories
+ */
+const loadBooksData = async () => {
+    try {
+        isLoading.value = true;
+
+        // Importer le service API
+        const api = (await import('@/services/api')).default;
+
+        // Récupérer les livres, auteurs et réservations
+        const [booksData, authorsData, reservations] = await Promise.all([
+            api.get('/books'),
+            api.get('/authors'),
+            api.get('/reservation/books')
+        ]);
+
+        authors.value = authorsData;
+
+        // Obtenir la liste des livres actuellement empruntés
+        const borrowedBooks = reservations
+            .filter((r) => !r.return_date)
+            .map((r) => r.book_id);
+
+        // Transformer les données pour notre interface
+        allBooks.value = booksData.map((bookItem) => {
+            const author = authorsData.find((a) => a.id === bookItem.author);
+
+            return {
+                id: bookItem.isbn,
+                isbn: bookItem.isbn,
+                title: bookItem.title,
+                author: author
+                    ? `${author.firstname} ${author.lastname}`
+                    : 'Auteur inconnu',
+                rating: bookItem.average_rating || 0,
+                coverUrl: bookItem.thumbnail || '/api/placeholder/300/450',
+                available: !borrowedBooks.includes(bookItem.isbn),
+                category: Array.isArray(bookItem.keywords)
+                    ? bookItem.keywords[0] || 'non-catégorisé'
+                    : bookItem.keywords || 'non-catégorisé',
+                pages: bookItem.pages || 0,
+                year: bookItem.publish_year || 2020,
+                description: bookItem.summary || 'Description non disponible.',
+                publisher: 'Éditions Gallimard',
+                language: 'Français'
+            };
+        });
+
+        // Organiser les livres par catégories
+        organizeBooksIntoCategories();
+    } catch (error) {
+        console.error('Erreur lors du chargement des livres:', error);
+        ElNotification({
+            title: 'Erreur',
+            message:
+                'Impossible de charger les livres. Veuillez réessayer plus tard.',
+            type: 'error'
+        });
+
+        // En cas d'erreur, utiliser des tableaux vides
+        allBooks.value = [];
+        organizeBooksIntoCategories();
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+/**
+ * Organise les livres chargés dans les différentes catégories
+ */
+const organizeBooksIntoCategories = () => {
+    if (allBooks.value.length === 0) {
+        // Si pas de livres, laisser les tableaux vides
+        categories.value = [
+            { title: 'Dernières acquisitions', books: [] },
+            { title: 'Les mieux notés', books: [] },
+            { title: 'Classiques de la littérature', books: [] }
+        ];
+        return;
+    }
+
+    // Mélanger les livres pour les dernières acquisitions (simuler de nouveaux livres)
+    const shuffledBooks = [...allBooks.value].sort(() => 0.5 - Math.random());
+
+    // Trier par note pour les mieux notés
+    const topRatedBooks = [...allBooks.value]
+        .filter((book) => book.rating > 0)
+        .sort((a, b) => b.rating - a.rating);
+
+    // Filtrer les classiques (auteurs classiques français)
+    const classicAuthors = [
+        'Victor Hugo',
+        'Albert Camus',
+        'Antoine de Saint-Exupéry',
+        'Alexandre Dumas',
+        'Gustave Flaubert',
+        'Marcel Proust',
+        'Jean-Paul Sartre',
+        'Simone de Beauvoir'
+    ];
+
+    const classicBooks = allBooks.value.filter((book) =>
+        classicAuthors.some((author) =>
+            book.author.toLowerCase().includes(author.toLowerCase())
+        )
+    );
+
+    // Mettre à jour les catégories avec les vrais livres
+    categories.value = [
+        {
+            title: 'Dernières acquisitions',
+            books: shuffledBooks.slice(0, 12) // Prendre les 12 premiers
+        },
+        {
+            title: 'Les mieux notés',
+            books: topRatedBooks.slice(0, 12) // Prendre les 12 mieux notés
+        },
+        {
+            title: 'Classiques de la littérature',
+            books:
+                classicBooks.length > 0
+                    ? classicBooks.slice(0, 12)
+                    : shuffledBooks.slice(0, 12)
+        }
+    ];
+
+    console.log('📚 Catégories organisées:', {
+        dernieresAcquisitions: categories.value[0].books.length,
+        mieuxNotes: categories.value[1].books.length,
+        classiques: categories.value[2].books.length
+    });
+};
+
+/**
  * Initialise les positions des sliders et configure les dimensions responsives
- * @returns {void}
  */
 onMounted(async () => {
-    await loadRooms();
+    await loadBooksData();
     sliderPositions.value = categories.value.map(() => 0);
     maxPositions.value = categories.value.map(() => 0);
     updateItemWidth();
@@ -161,7 +246,6 @@ onMounted(async () => {
 
 /**
  * Nettoie les listeners d'événements avant le démontage du composant
- * @returns {void}
  */
 onBeforeUnmount(() => {
     window.removeEventListener('resize', updateItemWidth);
@@ -169,7 +253,6 @@ onBeforeUnmount(() => {
 
 /**
  * Met à jour la largeur des éléments et le nombre d'éléments visibles
- * @returns {void}
  */
 const updateItemWidth = () => {
     const width = window.innerWidth;
@@ -187,10 +270,6 @@ const updateItemWidth = () => {
 
 /**
  * Met à jour la position maximale pour un slider de catégorie spécifique
- * @param {Object} params - Paramètres de mise à jour
- * @param {Number} params.categoryIndex - Index de la catégorie à mettre à jour
- * @param {Number} params.maxPosition - Position maximale calculée pour ce slider
- * @returns {void}
  */
 const updateMaxPosition = ({ categoryIndex, maxPosition }) => {
     maxPositions.value[categoryIndex] = maxPosition;
@@ -198,7 +277,6 @@ const updateMaxPosition = ({ categoryIndex, maxPosition }) => {
 
 /**
  * Calcule la distance de déplacement pour chaque clic sur les boutons du slider
- * @returns {Number} La taille totale d'un élément (largeur + écart)
  */
 const slideStep = () => {
     return itemWidth.value + gapWidth.value;
@@ -206,8 +284,6 @@ const slideStep = () => {
 
 /**
  * Déplace le slider vers la gauche pour une catégorie spécifique
- * @param {Number} categoryIndex - Index de la catégorie à faire défiler
- * @returns {void}
  */
 const slideLeft = (categoryIndex) => {
     const newPosition = Math.max(
@@ -219,8 +295,6 @@ const slideLeft = (categoryIndex) => {
 
 /**
  * Déplace le slider vers la droite pour une catégorie spécifique
- * @param {Number} categoryIndex - Index de la catégorie à faire défiler
- * @returns {void}
  */
 const slideRight = (categoryIndex) => {
     const newPosition = Math.min(
@@ -232,8 +306,6 @@ const slideRight = (categoryIndex) => {
 
 /**
  * Gère la réservation d'un livre si celui-ci est disponible
- * @param {Object} book - Le livre à réserver
- * @returns {void}
  */
 const reserveBook = async (book) => {
     if (!book.available) {
@@ -259,11 +331,16 @@ const reserveBook = async (book) => {
     }
 
     try {
-        // Importer le service API
         const api = (await import('@/services/api')).default;
 
+        // Récupérer les informations de l'utilisateur connecté
+        const userData = await api.get('/me');
+
         // Envoyer la demande de réservation avec l'ISBN du livre
-        await api.post('/reservation/books', { book_id: book.isbn });
+        await api.post('/reservation/books', {
+            user_id: userData.id,
+            book_id: book.isbn
+        });
 
         // Mettre à jour l'état du livre dans toutes les catégories
         categories.value.forEach((category) => {
@@ -310,10 +387,8 @@ const handleReservation = async () => {
             try {
                 isSubmitting.value = true;
 
-                // Importer le service API
                 const api = (await import('@/services/api')).default;
 
-                // Préparer les données pour l'API
                 const reservationData = {
                     room_id: selectedRoom.value.id,
                     date:
@@ -324,19 +399,15 @@ const handleReservation = async () => {
                         reservationForm.value.timeSlot.replace('-', ':')
                 };
 
-                // Envoyer la demande de réservation
                 await api.post('/reservation/rooms', reservationData);
 
-                // Générer un ID de réservation aléatoire (pour l'UI seulement, le vrai ID vient du backend)
                 reservationId.value = `RES-${Math.floor(Math.random() * 10000)
                     .toString()
                     .padStart(4, '0')}`;
 
-                // Fermer la modal de réservation et ouvrir la confirmation
                 showReservationModal.value = false;
                 showConfirmationModal.value = true;
 
-                // Réinitialiser le formulaire pour une prochaine réservation
                 reservationForm.value = {
                     date: new Date(),
                     timeSlot: '',

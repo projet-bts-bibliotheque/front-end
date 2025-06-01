@@ -52,7 +52,7 @@
                     <el-slider
                         v-model="localYearRange"
                         range
-                        :min="1900"
+                        :min="0"
                         :max="2025"
                         :marks="yearMarks"
                     />
@@ -92,7 +92,7 @@ const props = defineProps({
     },
     yearRange: {
         type: Array,
-        default: () => [1900, 2025]
+        default: () => [0, 2025]
     },
     categories: {
         type: Array,
@@ -108,11 +108,8 @@ const localAvailabilityFilter = ref(props.availabilityFilter);
 const localMinRating = ref(props.minRating);
 const localYearRange = ref([...props.yearRange]);
 
-// Marqueurs pour le slider d'années
 const yearMarks = {
-    1900: '1900',
-    1950: '1950',
-    2000: '2000',
+    0: '0',
     2025: '2025'
 };
 
@@ -156,12 +153,11 @@ const applyFilters = () => {
     emit('update:show', false);
 };
 
-// Réinitialiser les filtres
 const resetFilters = () => {
     localSelectedCategories.value = [];
     localAvailabilityFilter.value = 'all';
     localMinRating.value = 0;
-    localYearRange.value = [1900, 2025];
+    localYearRange.value = [0, 2025];
 
     emit('reset');
     emit('update:show', false);
@@ -254,7 +250,6 @@ const resetFilters = () => {
     flex: 1;
 }
 
-/* Overlay de fond quand le drawer est ouvert */
 @media (max-width: 768px) {
     .filters-drawer {
         width: 280px;

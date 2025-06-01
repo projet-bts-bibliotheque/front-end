@@ -22,7 +22,6 @@
             />
 
             <div class="catalog-layout">
-                <!-- Sidebar de filtres pour desktop -->
                 <div class="filters-sidebar">
                     <div class="filters-header">
                         <h2>Filtres</h2>
@@ -72,7 +71,7 @@
                             <el-slider
                                 v-model="yearRange"
                                 range
-                                :min="1900"
+                                :min="0"
                                 :max="2025"
                                 :marks="yearMarks"
                             />
@@ -89,7 +88,6 @@
                     </div>
                 </div>
 
-                <!-- Drawer mobile pour les filtres -->
                 <FiltersDrawer
                     v-model:show="showFiltersMobile"
                     :selectedCategories="selectedCategories"
@@ -101,7 +99,6 @@
                     @reset="resetFilters"
                 />
 
-                <!-- Contenu principal -->
                 <div class="books-container">
                     <div class="catalog-controls">
                         <div class="catalog-stats">
@@ -315,7 +312,6 @@ import ForgotPasswordModal from '~/components/modals/ForgotPasswordModal.vue';
 import SearchBar from '~/components/catalog/SearchBar.vue';
 import FiltersDrawer from '~/components/catalog/FiltersDrawer.vue';
 
-// État de l'UI pour les modales et les formulaires
 const searchQuery = ref('');
 const showLoginModal = ref(false);
 const showRegisterModal = ref(false);
@@ -335,22 +331,19 @@ const registerForm = ref({
     acceptTerms: false
 });
 
-// État des filtres
 const selectedCategories = ref([]);
 const selectedAuthors = ref([]);
 const availabilityFilter = ref('all');
 const minRating = ref(0);
-const yearRange = ref([1900, 2025]);
+const yearRange = ref([0, 2025]);
 const sortMethod = ref('newest');
 const viewMode = ref('grid');
 const showFiltersMobile = ref(false);
 const isLoading = ref(true);
 
-// Pagination
 const currentPage = ref(1);
 const pageSize = ref(24);
 
-// Liste des catégories disponibles
 const categoriesList = [
     { value: 'roman', label: 'Romans' },
     { value: 'science-fiction', label: 'Science-fiction' },
@@ -364,10 +357,8 @@ const categoriesList = [
     { value: 'informatique', label: 'Informatique' }
 ];
 
-// Liste des auteurs pour la recherche avancée
 const authorsList = ref([]);
 
-// Options de tri
 const sortOptions = [
     { value: 'newest', label: 'Plus récents' },
     { value: 'oldest', label: 'Plus anciens' },
@@ -377,70 +368,95 @@ const sortOptions = [
     { value: 'author_asc', label: 'Auteur (A-Z)' }
 ];
 
-// Marqueurs pour le slider d'années
 const yearMarks = {
-    1900: '1900',
-    1950: '1950',
-    2000: '2000',
+    0: '0',
     2025: '2025'
 };
 
-// Données de livres
 const allBooks = ref([]);
 
-// Chargement des livres depuis l'API
 onMounted(async () => {
     isLoading.value = true;
     try {
-        // Importer le service API
         const api = (await import('@/services/api')).default;
-
-        // Récupérer les livres et les auteurs depuis l'API
         const [books, authors, reservations] = await Promise.all([
             api.get('/books'),
             api.get('/authors'),
             api.get('/reservation/books')
         ]);
 
+        if (!books || !Array.isArray(books)) {
+            throw new Error("Aucun livre reçu de l'API ou format invalide");
+        }
+
+        if (!authors || !Array.isArray(authors)) {
+            throw new Error("Aucun auteur reçu de l'API ou format invalide");
+        }
+
         authorsList.value = authors.map(
             (author) => `${author.firstname} ${author.lastname}`
         );
 
-        // Obtenir la liste des livres actuellement empruntés (pas encore retournés)
-        const borrowedBooks = reservations
-            .filter((r) => !r.return_date)
-            .map((r) => r.book_id);
+        const borrowedBooks = Array.isArray(reservations)
+            ? reservations.filter((r) => !r.return_date).map((r) => r.book_id)
+            : [];
 
-        // Transformer les données pour correspondre à notre structure frontend
-        allBooks.value = books.map((book) => ({
-            id: book.id || book.isbn,
-            title: book.title,
-            author: getAuthorName(book.author, authors),
-            rating: book.average_rating || 0,
-            thumbnail: book.thumbnail || '/api/placeholder/150/220',
-            available: !borrowedBooks.includes(book.isbn), // Vérifier si le livre n'est pas emprunté
-            category: Array.isArray(book.keyword)
-                ? book.keyword[0] || 'non-catégorisé'
-                : book.keyword || 'non-catégorisé',
-            pages: book.pages || 0,
-            year: book.publish_year || 0,
-            isbn: book.isbn,
-            description: book.summary || ''
-        }));
+        allBooks.value = books.map((book) => {
+            const author = authors.find((a) => a.id === book.author);
+
+            let category = 'non-catégorisé';
+
+            if (book.keywords) {
+                if (Array.isArray(book.keywords)) {
+                    category = book.keywords[0] || 'non-catégorisé';
+                } else if (typeof book.keywords === 'string') {
+                    try {
+                        const parsed = JSON.parse(book.keywords);
+                        category = Array.isArray(parsed)
+                            ? parsed[0] || 'non-catégorisé'
+                            : book.keywords;
+                    } catch {
+                        category = book.keywords;
+                    }
+                }
+            } else if (book.keyword) {
+                if (Array.isArray(book.keyword)) {
+                    category = book.keyword[0] || 'non-catégorisé';
+                } else {
+                    category = book.keyword;
+                }
+            }
+
+            return {
+                id: book.id || book.isbn,
+                title: book.title || 'Titre non défini',
+                author: author
+                    ? `${author.firstname} ${author.lastname}`
+                    : 'Auteur inconnu',
+                rating: parseFloat(book.average_rating) || 0,
+                thumbnail: book.thumbnail || '/api/placeholder/150/220',
+                available: !borrowedBooks.includes(book.isbn),
+                category: category,
+                pages: parseInt(book.pages) || 0,
+                year: parseInt(book.publish_year) || 2020,
+                isbn: book.isbn,
+                description: book.summary || ''
+            };
+        });
 
         if (route.query.search) {
             searchQuery.value = route.query.search;
         }
     } catch (error) {
         console.error('Erreur lors du chargement des livres:', error);
+
         ElNotification({
-            title: 'Erreur',
-            message:
-                'Impossible de charger les livres. Veuillez réessayer plus tard.',
-            type: 'error'
+            title: 'Erreur de chargement',
+            message: `Impossible de charger les livres: ${error.message}`,
+            type: 'error',
+            duration: 0
         });
 
-        // En cas d'erreur, utiliser des données vides
         allBooks.value = [];
     } finally {
         isLoading.value = false;
@@ -456,9 +472,6 @@ watch(
     }
 );
 
-// Fonction pour déterminer si un livre est emprunté
-
-// Fonction pour obtenir le nom de l'auteur à partir de son ID
 const getAuthorName = (authorId, authors) => {
     if (!authors || !authorId) return 'Auteur inconnu';
 
@@ -466,41 +479,39 @@ const getAuthorName = (authorId, authors) => {
     return author ? `${author.firstname} ${author.lastname}` : 'Auteur inconnu';
 };
 
-// Livres filtrés selon les critères de recherche
 const filteredBooks = computed(() => {
     let result = [...allBooks.value];
 
-    // Filtrer par catégories
     if (selectedCategories.value.length > 0) {
         result = result.filter((book) =>
             selectedCategories.value.includes(book.category)
         );
     }
 
-    // Filtrer par auteurs
     if (selectedAuthors.value.length > 0) {
         result = result.filter((book) =>
             selectedAuthors.value.includes(book.author)
         );
     }
 
-    // Filtrer par disponibilité
     if (availabilityFilter.value === 'available') {
         result = result.filter((book) => book.available);
     }
 
-    // Filtrer par note minimale
     if (minRating.value > 0) {
         result = result.filter((book) => book.rating >= minRating.value);
     }
 
-    // Filtrer par plage d'années
-    result = result.filter(
-        (book) =>
+    // FIX: Accepter les livres sans année valide
+    result = result.filter((book) => {
+        if (!book.year || book.year === 0) {
+            return true;
+        }
+        return (
             book.year >= yearRange.value[0] && book.year <= yearRange.value[1]
-    );
+        );
+    });
 
-    // Filtrer par recherche textuelle
     if (searchQuery.value.trim()) {
         const query = searchQuery.value.toLowerCase().trim();
         result = result.filter(
@@ -512,7 +523,6 @@ const filteredBooks = computed(() => {
         );
     }
 
-    // Trier les résultats
     switch (sortMethod.value) {
         case 'newest':
             result.sort((a, b) => b.year - a.year);
@@ -537,31 +547,26 @@ const filteredBooks = computed(() => {
     return result;
 });
 
-// Calcul des livres à afficher avec pagination
 const displayedBooks = computed(() => {
     const startIndex = (currentPage.value - 1) * pageSize.value;
     return filteredBooks.value.slice(startIndex, startIndex + pageSize.value);
 });
 
-// Réinitialiser les filtres
 const resetFilters = () => {
     selectedCategories.value = [];
     selectedAuthors.value = [];
     availabilityFilter.value = 'all';
     minRating.value = 0;
-    yearRange.value = [1900, 2025];
+    yearRange.value = [0, 2025];
     searchQuery.value = '';
     currentPage.value = 1;
 };
 
-// Appliquer les filtres
 const applyFilters = () => {
-    // Réinitialiser la pagination lors de l'application des filtres
     currentPage.value = 1;
     showFiltersMobile.value = false;
 };
 
-// Gestion des filtres depuis le drawer mobile
 const handleFilterDrawerApply = (filters) => {
     selectedCategories.value = filters.selectedCategories;
     availabilityFilter.value = filters.availabilityFilter;
@@ -570,7 +575,6 @@ const handleFilterDrawerApply = (filters) => {
     currentPage.value = 1;
 };
 
-// Gestion de la pagination
 const handleSizeChange = (newSize) => {
     pageSize.value = newSize;
     currentPage.value = 1;
@@ -578,63 +582,39 @@ const handleSizeChange = (newSize) => {
 
 const handleCurrentChange = (newPage) => {
     currentPage.value = newPage;
-    // Scroller en haut des résultats
     window.scrollTo({
         top: document.querySelector('.catalog-controls').offsetTop - 100,
         behavior: 'smooth'
     });
 };
 
-// Gérer la recherche standard
 const handleSearch = (text) => {
     searchQuery.value = text;
     currentPage.value = 1;
 };
 
-// Gérer la recherche avancée
 const handleAdvancedSearch = (filters) => {
-    console.log('🔍 Recherche avancée reçue:', filters);
-
-    // Mettre à jour la recherche textuelle
     searchQuery.value = filters.text || '';
-
-    // Traiter les catégories
     selectedCategories.value = filters.categories || [];
-
-    // Traiter les auteurs
     selectedAuthors.value = filters.authors || [];
 
-    // Traiter la plage d'années - simplifiée
     if (filters.yearRange && Array.isArray(filters.yearRange)) {
         yearRange.value = [
-            filters.yearRange[0] || 1900,
+            filters.yearRange[0] || 0,
             filters.yearRange[1] || 2025
         ];
     } else {
-        yearRange.value = [1900, 2025];
+        yearRange.value = [0, 2025];
     }
 
-    // Traiter le filtre de disponibilité
     availabilityFilter.value = filters.availability || 'all';
-
-    // Réinitialiser la pagination
     currentPage.value = 1;
-
-    console.log('✅ Filtres appliqués:', {
-        searchQuery: searchQuery.value,
-        selectedCategories: selectedCategories.value,
-        selectedAuthors: selectedAuthors.value,
-        yearRange: yearRange.value,
-        availabilityFilter: availabilityFilter.value
-    });
 };
 
-// Réinitialiser la recherche
 const resetSearch = () => {
     resetFilters();
 };
 
-// Réserver un livre
 const reserveBook = async (book) => {
     if (!book.available) {
         ElNotification({
@@ -645,7 +625,6 @@ const reserveBook = async (book) => {
         return;
     }
 
-    // Vérifier si l'utilisateur est connecté
     const token =
         localStorage.getItem('auth_token') ||
         sessionStorage.getItem('auth_token');
@@ -661,17 +640,13 @@ const reserveBook = async (book) => {
 
     try {
         const api = (await import('@/services/api')).default;
-
-        // Récupérer d'abord les informations de l'utilisateur connecté
         const userData = await api.get('/me');
 
-        // Envoyer la réservation avec user_id et book_id
         await api.post('/reservation/books', {
             user_id: userData.id,
             book_id: book.isbn
         });
 
-        // Mettre à jour l'état du livre en local
         const index = allBooks.value.findIndex((b) => b.isbn === book.isbn);
         if (index !== -1) {
             allBooks.value[index].available = false;
@@ -696,17 +671,14 @@ const reserveBook = async (book) => {
     }
 };
 
-// Gestion de la connexion
 const login = () => {
     showLoginModal.value = false;
 };
 
-// Gestion de l'inscription
 const handleRegister = () => {
     showRegisterModal.value = false;
 };
 
-// Gestion de la réinitialisation du mot de passe
 const handleResetPasswordRequest = (email) => {
     ElNotification({
         title: `Email envoyé à ${email}`,
@@ -716,7 +688,6 @@ const handleResetPasswordRequest = (email) => {
     });
 };
 
-// Observer les changements de filtre pour la mise à jour automatique des résultats
 watch(
     [
         searchQuery,
@@ -728,7 +699,6 @@ watch(
         sortMethod
     ],
     () => {
-        // Réinitialiser la pagination lorsque les filtres changent
         currentPage.value = 1;
     }
 );
@@ -912,7 +882,6 @@ watch(
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* Styles des cartes de livre */
 .book-card {
     display: flex;
     flex-direction: column;
@@ -994,7 +963,6 @@ watch(
     font-weight: 600;
 }
 
-/* Style carte en mode liste */
 .book-card.list-card {
     flex-direction: row;
     height: 200px;
